@@ -11,7 +11,20 @@ type UserRepository interface {
 type ShiftRepository interface {
 	Save(shift *domain.Shift) error
 	FindByUserId(userId uint) ([]*domain.Shift, error)
+	FindAll() ([]*domain.Shift, error)
 	Delete(id uint) error
+}
+
+type TaskRepository interface {
+	Save(task *domain.Task) error
+	FindAll() ([]*domain.Task, error)
+	FindUnassigned() ([]*domain.Task, error)
+	Update(task *domain.Task) error
+}
+
+type SettingRepository interface {
+	Get() (*domain.SystemSetting, error)
+	Update(setting *domain.SystemSetting) error
 }
 
 // ... other repositories like LocationRepository, TimeOffRepository

@@ -1,0 +1,34 @@
+package repository
+
+import (
+	"shift-management/domain"
+
+	"gorm.io/gorm"
+)
+
+type userRepo struct {
+	db *gorm.DB
+}
+
+func NewUserRepository(db *gorm.DB) UserRepository {
+	return &userRepo{db: db}
+}
+
+func (r *userRepo) Save(user *domain.User) error {
+	return r.db.Save(user).Error
+}
+
+func (r *userRepo) FindById(id uint) (*domain.User, error) {
+	var user domain.User
+	err := r.db.Preload("Shifts").First(&user, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *userRepo) FindAll() ([]*domain.User, error) {
+	var users []*domain.User
+	err := r.db.Find(&users).Error
+	return users, err
+}

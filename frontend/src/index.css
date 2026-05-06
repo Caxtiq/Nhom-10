@@ -1,0 +1,38 @@
+body {
+  background-color: #f8f9fa; /* Light gray background */
+  color: #212529; /* Dark gray text */
+}
+
+/* Minimalist overrides */
+.card {
+  border: 1px solid #e9ecef;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  margin-bottom: 1.5rem;
+  border-radius: 0.5rem;
+}
+
+.card-header {
+  background-color: #fff;
+  border-bottom: 1px solid #e9ecef;
+  font-weight: 600;
+}
+
+.table {
+  font-size: 0.95rem;
+}
+
+.table th {
+  font-weight: 600;
+  color: #495057;
+  border-bottom-width: 2px;
+}
+
+.btn-primary {
+  background-color: #343a40;
+  border-color: #343a40;
+}
+
+.btn-primary:hover {
+  background-color: #212529;
+  border-color: #212529;
+}
