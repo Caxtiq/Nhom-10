@@ -4,6 +4,7 @@ import (
 	"errors"
 	"shift-management/domain"
 	"shift-management/repository"
+	"time"
 )
 
 type shiftService struct {
@@ -22,9 +23,29 @@ func (s *shiftService) ScheduleShift(shift *domain.Shift) error {
 }
 
 func (s *shiftService) GetShiftsByUser(userId uint) ([]*domain.Shift, error) {
-	return s.repo.FindByUserId(userId)
+	return s.repo.FindByUserID(userId)
 }
 
 func (s *shiftService) GetAllShifts() ([]*domain.Shift, error) {
 	return s.repo.FindAll()
+}
+
+func (s *shiftService) ClockIn(shiftID uint, t time.Time) error {
+	shift, err := s.repo.FindByID(shiftID)
+	if err != nil {
+		return err
+	}
+	shift.ClockInTime = &t
+	shift.Status = "in_progress"
+	return s.repo.Save(shift)
+}
+
+func (s *shiftService) ClockOut(shiftID uint, t time.Time) error {
+	shift, err := s.repo.FindByID(shiftID)
+	if err != nil {
+		return err
+	}
+	shift.ClockOutTime = &t
+	shift.Status = "completed"
+	return s.repo.Save(shift)
 }

@@ -18,6 +18,8 @@ type User struct {
 	gorm.Model
 	Name            string           `gorm:"type:varchar(100);not null"`
 	Email           string           `gorm:"type:varchar(100);uniqueIndex;not null"`
+	Username        string           `gorm:"uniqueIndex;not null;default:''"`
+	PasswordHash    string           `gorm:"not null;default:''"`
 	Phone           string           `gorm:"type:varchar(20)"`
 	Role            Role             `gorm:"type:varchar(20);not null;default:'employee'"`
 	Shifts          []Shift          `gorm:"foreignKey:UserID"`

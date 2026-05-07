@@ -18,9 +18,18 @@ func (r *userRepo) Save(user *domain.User) error {
 	return r.db.Save(user).Error
 }
 
-func (r *userRepo) FindById(id uint) (*domain.User, error) {
+func (r *userRepo) FindByID(id uint) (*domain.User, error) {
 	var user domain.User
-	err := r.db.Preload("Shifts").First(&user, id).Error
+	err := r.db.First(&user, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *userRepo) FindByUsername(username string) (*domain.User, error) {
+	var user domain.User
+	err := r.db.Where("username = ?", username).First(&user).Error
 	if err != nil {
 		return nil, err
 	}

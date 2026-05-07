@@ -9,22 +9,33 @@ func SetupRouter(handler *Handler) *gin.Engine {
 	r := gin.Default()
 
 	// CORS config for frontend
-	r.Use(cors.Default())
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowAllOrigins = true
+	corsConfig.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
+	r.Use(cors.New(corsConfig))
 
 	api := r.Group("/api")
 	{
-		api.GET("/users", handler.GetUsers)
-		api.POST("/users", handler.CreateUser)
-		
-		api.GET("/shifts", handler.GetShifts)
-		api.POST("/shifts", handler.CreateShift)
-		
-		api.GET("/tasks", handler.GetTasks)
-		api.POST("/tasks", handler.CreateTask)
-		api.POST("/tasks/auto-schedule", handler.AutoSchedule)
-		
-		api.GET("/settings", handler.GetSetting)
-		api.PUT("/settings", handler.UpdateSetting)
+		api.POST("/auth/login", handler.Login)
+
+		protected := api.Group("/")
+		protected.Use(AuthMiddleware())
+		{
+			protected.GET("/users", handler.GetUsers)
+			protected.POST("/users", handler.CreateUser)
+			
+			protected.GET("/shifts", handler.GetShifts)
+			protected.POST("/shifts", handler.CreateShift)
+			protected.POST("/shifts/:id/clock-in", handler.ClockIn)
+			protected.POST("/shifts/:id/clock-out", handler.ClockOut)
+			
+			protected.GET("/tasks", handler.GetTasks)
+			protected.POST("/tasks", handler.CreateTask)
+			protected.POST("/tasks/auto-schedule", handler.AutoSchedule)
+			
+			protected.GET("/settings", handler.GetSetting)
+			protected.PUT("/settings", handler.UpdateSetting)
+		}
 	}
 
 	return r

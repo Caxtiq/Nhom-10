@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"shift-management/domain"
+	"golang.org/x/crypto/bcrypt"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -40,6 +41,7 @@ func InitDB() {
 		&domain.TimeOffRequest{},
 		&domain.Task{},
 		&domain.SystemSetting{},
+		&domain.Notification{},
 	)
 	if err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
@@ -49,6 +51,19 @@ func InitDB() {
 	var setting domain.SystemSetting
 	if err := DB.First(&setting).Error; err != nil {
 		DB.Create(&domain.SystemSetting{MaxShiftHours: 8.0})
+	}
+	
+	// Seed Admin user if not exists
+	var admin domain.User
+	if err := DB.Where("username = ?", "admin").First(&admin).Error; err != nil {
+		hash, _ := bcrypt.GenerateFromPassword([]byte("admin"), bcrypt.DefaultCost)
+		DB.Create(&domain.User{
+			Name:         "Administrator",
+			Email:        "admin@example.com",
+			Username:     "admin",
+			PasswordHash: string(hash),
+			Role:         "admin",
+		})
 	}
 	
 	log.Println("Database connection and migration successful.")

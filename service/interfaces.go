@@ -1,6 +1,9 @@
 package service
 
-import "shift-management/domain"
+import (
+	"shift-management/domain"
+	"time"
+)
 
 type UserService interface {
 	RegisterUser(user *domain.User) error
@@ -12,6 +15,8 @@ type ShiftService interface {
 	ScheduleShift(shift *domain.Shift) error
 	GetShiftsByUser(userId uint) ([]*domain.Shift, error)
 	GetAllShifts() ([]*domain.Shift, error)
+	ClockIn(shiftID uint, t time.Time) error
+	ClockOut(shiftID uint, t time.Time) error
 }
 
 type TimeOffService interface {
