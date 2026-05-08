@@ -72,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: true,
                 prefix: const Padding(
                   padding: EdgeInsets.only(left: 12),
-                  child: Icon(CupertinoIcons.lock_solid, color: CupertinoColors.systemGrey),
+                  child: Icon(CupertinoIcons.padlock_solid, color: CupertinoColors.systemGrey),
                 ),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(

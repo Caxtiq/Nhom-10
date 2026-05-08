@@ -62,6 +62,28 @@ function ShiftCalendar() {
       setLoading(false);
     }
   };
+  const eventStyleGetter = (event) => {
+    let backgroundColor = '#3174ad'; // Default blue
+    if (event.resource.Status === 'completed') {
+      backgroundColor = '#198754'; // Success green
+    } else if (event.resource.Status === 'in_progress') {
+      backgroundColor = '#fd7e14'; // Warning orange
+    } else if (event.resource.Status === 'assigned') {
+      backgroundColor = '#0dcaf0'; // Info cyan
+    }
+    
+    return {
+      style: {
+        backgroundColor,
+        borderRadius: '6px',
+        opacity: 0.95,
+        color: 'white',
+        border: 'none',
+        display: 'block',
+        fontSize: '0.85rem'
+      }
+    };
+  };
 
   return (
     <div className="card h-100 shadow-sm border-0">
@@ -102,6 +124,8 @@ function ShiftCalendar() {
             step={zoomStep}
             timeslots={2}
             showMultiDayTimes
+            dayLayoutAlgorithm="no-overlap"
+            eventPropGetter={eventStyleGetter}
           />
         )}
       </div>
