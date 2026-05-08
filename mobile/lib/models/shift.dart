@@ -1,5 +1,6 @@
 class Shift {
   final int id;
+  final int userId;
   final String startTime;
   final String endTime;
   final String? clockInTime;
@@ -8,6 +9,7 @@ class Shift {
 
   Shift({
     required this.id,
+    required this.userId,
     required this.startTime,
     required this.endTime,
     this.clockInTime,
@@ -18,6 +20,7 @@ class Shift {
   factory Shift.fromJson(Map<String, dynamic> json) {
     return Shift(
       id: json['ID'],
+      userId: json['UserID'],
       startTime: json['StartTime'],
       endTime: json['EndTime'],
       clockInTime: json['ClockInTime'],

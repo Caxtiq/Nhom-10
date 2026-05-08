@@ -6,6 +6,8 @@ function TaskManagement() {
   
   const [title, setTitle] = useState('');
   const [role, setRole] = useState('employee');
+  const [requiredSkill, setRequiredSkill] = useState(1);
+  const [headcount, setHeadcount] = useState(1);
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
 
@@ -34,6 +36,8 @@ function TaskManagement() {
         body: JSON.stringify({ 
           Title: title,
           RequiredRole: role,
+          RequiredSkill: parseInt(requiredSkill),
+          Headcount: parseInt(headcount),
           StartTime: new Date(startTime).toISOString(),
           EndTime: new Date(endTime).toISOString()
         })
@@ -70,6 +74,28 @@ function TaskManagement() {
                   <option value="manager">Manager</option>
                   <option value="admin">Admin</option>
                 </select>
+              </div>
+              <div className="mb-3">
+                <label className="form-label text-muted small">Required Skill Level</label>
+                <input 
+                  type="number" 
+                  className="form-control"
+                  value={requiredSkill} 
+                  onChange={(e) => setRequiredSkill(e.target.value)} 
+                  min="1" max="5"
+                  required 
+                />
+              </div>
+              <div className="mb-3">
+                <label className="form-label text-muted small">Headcount (People needed)</label>
+                <input 
+                  type="number" 
+                  className="form-control"
+                  value={headcount} 
+                  onChange={(e) => setHeadcount(e.target.value)} 
+                  min="1"
+                  required 
+                />
               </div>
               <div className="mb-3">
                 <label className="form-label text-muted small">Start Time</label>
@@ -109,7 +135,8 @@ function TaskManagement() {
                 <thead className="table-light">
                   <tr>
                     <th className="px-4">Task</th>
-                    <th>Required Role</th>
+                    <th>Role & Skill</th>
+                    <th>Headcount</th>
                     <th>Time Needed</th>
                     <th>Status</th>
                   </tr>
@@ -118,7 +145,11 @@ function TaskManagement() {
                   {tasks.map(t => (
                     <tr key={t.ID}>
                       <td className="px-4 fw-medium">{t.Title}</td>
-                      <td><span className="badge bg-light text-dark border">{t.RequiredRole}</span></td>
+                      <td>
+                        <span className="badge bg-light text-dark border me-1">{t.RequiredRole}</span>
+                        <span className="badge bg-info text-dark border">Lv {t.RequiredSkill || 1}</span>
+                      </td>
+                      <td>{t.Headcount || 1} people</td>
                       <td className="text-muted">
                         {new Date(t.StartTime).toLocaleString()} <br/>
                         to {new Date(t.EndTime).toLocaleTimeString()}

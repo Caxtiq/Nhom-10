@@ -17,15 +17,17 @@ type Handler struct {
 	taskService    service.TaskService
 	settingService service.SettingService
 	authService    service.AuthService
+	swapService    service.ShiftSwapService
 }
 
-func NewHandler(us service.UserService, ss service.ShiftService, ts service.TaskService, set service.SettingService, as service.AuthService) *Handler {
+func NewHandler(us service.UserService, ss service.ShiftService, ts service.TaskService, set service.SettingService, as service.AuthService, swap service.ShiftSwapService) *Handler {
 	return &Handler{
 		userService:    us,
 		shiftService:   ss,
 		taskService:    ts,
 		settingService: set,
 		authService:    as,
+		swapService:    swap,
 	}
 }
 
@@ -171,4 +173,59 @@ func (h *Handler) ClockOut(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Clocked out successfully"})
+}
+
+func (h *Handler) GetPendingSwaps(c *gin.Context) {
+	swaps, err := h.swapService.GetPendingSwaps()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, swaps)
+}
+
+func (h *Handler) RequestSwap(c *gin.Context) {
+	var input struct {
+		RequesterID  uint `json:"RequesterID"`
+		TargetUserID uint `json:"TargetUserID"`
+		ShiftID      uint `json:"ShiftID"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	swap, err := h.swapService.RequestSwap(input.RequesterID, input.TargetUserID, input.ShiftID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, swap)
+}
+
+func (h *Handler) ApproveSwap(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid swap id"})
+		return
+	}
+	if err := h.swapService.ApproveSwap(uint(id)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Swap approved"})
+}
+
+func (h *Handler) RejectSwap(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid swap id"})
+		return
+	}
+	if err := h.swapService.RejectSwap(uint(id)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Swap rejected"})
 }

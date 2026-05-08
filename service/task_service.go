@@ -42,12 +42,26 @@ func (s *taskService) AutoScheduleShifts() (int, error) {
 		return 0, err
 	}
 
-	setting, _ := s.settingRepo.Get()
-	maxHours := 8.0
-	if setting != nil && setting.MaxShiftHours > 0 {
-		maxHours = setting.MaxShiftHours
+	// Load all existing shifts to calculate constraints
+	allShifts, _ := s.shiftRepo.FindAll()
+	userShiftsMap := make(map[uint][]domain.Shift)
+	for _, shift := range allShifts {
+		userShiftsMap[shift.UserID] = append(userShiftsMap[shift.UserID], *shift)
 	}
 
+	setting, _ := s.settingRepo.Get()
+	maxHours := 8.0
+	minRest := 11.0
+	if setting != nil {
+		if setting.MaxShiftHours > 0 {
+			maxHours = setting.MaxShiftHours
+		}
+		if setting.MinRestHours > 0 {
+			minRest = setting.MinRestHours
+		}
+	}
+
+	ruleEngine := NewRuleEngine(minRest)
 	shiftsScheduled := 0
 
 	for _, task := range unassignedTasks {
@@ -61,42 +75,66 @@ func (s *taskService) AutoScheduleShifts() (int, error) {
 		
 		for i := 0; i < shiftsNeeded; i++ {
 			shiftDuration := maxHours
-			// If adding maxHours exceeds the task end time, cap it
 			if currentStartTime.Add(time.Duration(maxHours * float64(time.Hour))).After(task.EndTime) {
 				shiftDuration = task.EndTime.Sub(currentStartTime).Hours()
 			}
 			shiftEndTime := currentStartTime.Add(time.Duration(shiftDuration * float64(time.Hour)))
 
-			// Find available user
-			userFound := false
-			for _, user := range users {
-				if user.Role == task.RequiredRole {
-					// Create shift
-					shift := &domain.Shift{
-						UserID:     user.ID,
-						LocationID: 1, 
-						StartTime:  currentStartTime,
-						EndTime:    shiftEndTime,
-						Notes:      task.Title,
-						Status:     "scheduled",
-					}
-					
-					err := s.shiftRepo.Save(shift)
-					if err == nil {
-						shiftsScheduled++
-						currentStartTime = shiftEndTime
-						userFound = true
-						break // Move to the next shift block for this task
+			// We need Headcount number of users for this shift segment
+			headcountFulfilled := 0
+			
+			// CSP: Scoring and Selection
+			var eligibleUsers []struct {
+				User  *domain.User
+				Score int
+			}
+
+			for idx, user := range users {
+				if ruleEngine.IsValid(user, userShiftsMap[user.ID], task.RequiredRole, task.RequiredSkill, currentStartTime, shiftEndTime) {
+					score := ruleEngine.CalculateScore(user, userShiftsMap[user.ID], task.RequiredSkill)
+					eligibleUsers = append(eligibleUsers, struct {
+						User  *domain.User
+						Score int
+					}{users[idx], score})
+				}
+			}
+
+			// Sort eligible users by score descending (Bubble sort for simplicity)
+			for i := 0; i < len(eligibleUsers)-1; i++ {
+				for j := 0; j < len(eligibleUsers)-i-1; j++ {
+					if eligibleUsers[j].Score < eligibleUsers[j+1].Score {
+						eligibleUsers[j], eligibleUsers[j+1] = eligibleUsers[j+1], eligibleUsers[j]
 					}
 				}
 			}
-			
-			if !userFound {
-				break // Could not fulfill this segment
+
+			// Assign top N users based on Headcount
+			for _, item := range eligibleUsers {
+				if headcountFulfilled >= task.Headcount {
+					break
+				}
+				
+				shift := &domain.Shift{
+					UserID:     item.User.ID,
+					LocationID: task.LocationID, 
+					StartTime:  currentStartTime,
+					EndTime:    shiftEndTime,
+					Notes:      task.Title,
+					Status:     "scheduled",
+				}
+				
+				if err := s.shiftRepo.Save(shift); err == nil {
+					shiftsScheduled++
+					headcountFulfilled++
+					userShiftsMap[item.User.ID] = append(userShiftsMap[item.User.ID], *shift) // update local state
+				}
 			}
+			
+			// If we couldn't fulfill the headcount, we still move forward (partial assignment)
+			currentStartTime = shiftEndTime
 		}
 		
-		// Mark task as assigned
+		// Mark task as assigned (or partially assigned, but for simplicity we mark it assigned)
 		task.IsAssigned = true
 		s.taskRepo.Update(task)
 	}

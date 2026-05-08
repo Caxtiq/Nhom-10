@@ -42,6 +42,7 @@ func InitDB() {
 		&domain.Task{},
 		&domain.SystemSetting{},
 		&domain.Notification{},
+		&domain.ShiftSwap{},
 	)
 	if err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
@@ -50,7 +51,10 @@ func InitDB() {
 	// Create default setting if not exists
 	var setting domain.SystemSetting
 	if err := DB.First(&setting).Error; err != nil {
-		DB.Create(&domain.SystemSetting{MaxShiftHours: 8.0})
+		DB.Create(&domain.SystemSetting{
+			MaxShiftHours: 8.0,
+			MinRestHours:  11.0,
+		})
 	}
 	
 	// Seed Admin user if not exists

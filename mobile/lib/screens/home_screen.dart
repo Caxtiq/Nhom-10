@@ -48,6 +48,89 @@ class _HomeScreenState extends State<HomeScreen> {
     if (success) _loadShifts();
   }
 
+  void _showSwapDialog(int requesterId, int shiftId) {
+    final TextEditingController _targetIdController = TextEditingController();
+
+    showCupertinoDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return CupertinoAlertDialog(
+          title: const Text("Request Swap"),
+          content: Column(
+            children: [
+              const SizedBox(height: 10),
+              const Text("Enter the User ID of the colleague you want to swap with:"),
+              const SizedBox(height: 16),
+              CupertinoTextField(
+                controller: _targetIdController,
+                keyboardType: TextInputType.number,
+                placeholder: "Target User ID",
+                padding: const EdgeInsets.all(12),
+              ),
+            ],
+          ),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text("Cancel"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              child: const Text("Submit"),
+              onPressed: () async {
+                final targetIdStr = _targetIdController.text;
+                if (targetIdStr.isNotEmpty) {
+                  final targetId = int.tryParse(targetIdStr);
+                  if (targetId != null) {
+                    Navigator.of(context).pop();
+                    bool success = await ApiService.requestSwap(requesterId, targetId, shiftId);
+                    if (success) {
+                      _showSuccessDialog();
+                    } else {
+                      _showErrorDialog();
+                    }
+                  }
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSuccessDialog() {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text("Success"),
+        content: const Text("Swap request submitted. Awaiting manager approval."),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text("OK"),
+            onPressed: () => Navigator.of(context).pop(),
+          )
+        ],
+      )
+    );
+  }
+
+  void _showErrorDialog() {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text("Error"),
+        content: const Text("Failed to submit swap request. Please try again."),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text("OK"),
+            onPressed: () => Navigator.of(context).pop(),
+          )
+        ],
+      )
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
@@ -107,12 +190,25 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 24),
                         if (shift.status == 'scheduled' || shift.status == 'assigned')
-                          SizedBox(
-                            width: double.infinity,
-                            child: CupertinoButton.filled(
-                              child: const Text("Clock In", style: TextStyle(fontWeight: FontWeight.bold)),
-                              onPressed: () => _clockIn(shift.id),
-                            ),
+                          Column(
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                child: CupertinoButton.filled(
+                                  child: const Text("Clock In", style: TextStyle(fontWeight: FontWeight.bold)),
+                                  onPressed: () => _clockIn(shift.id),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                width: double.infinity,
+                                child: CupertinoButton(
+                                  color: CupertinoColors.systemGrey5,
+                                  onPressed: () => _showSwapDialog(shift.userId, shift.id),
+                                  child: const Text("Swap Shift", style: TextStyle(fontWeight: FontWeight.bold, color: CupertinoColors.black)),
+                                ),
+                              )
+                            ],
                           )
                         else if (shift.status == 'in_progress')
                           SizedBox(

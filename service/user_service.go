@@ -2,6 +2,8 @@ package service
 
 import (
 	"errors"
+	"strings"
+	"golang.org/x/crypto/bcrypt"
 	"shift-management/domain"
 	"shift-management/repository"
 )
@@ -18,6 +20,22 @@ func (s *userService) RegisterUser(user *domain.User) error {
 	if user.Email == "" || user.Name == "" {
 		return errors.New("name and email are required")
 	}
+
+	// Tự động tạo Username từ Email (phần trước chữ @)
+	if user.Username == "" {
+		parts := strings.Split(user.Email, "@")
+		user.Username = parts[0]
+	}
+
+	// Đặt mật khẩu mặc định là "123456" nếu Admin chưa cấp
+	if user.PasswordHash == "" {
+		hash, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+		user.PasswordHash = string(hash)
+	}
+
 	return s.repo.Save(user)
 }
 

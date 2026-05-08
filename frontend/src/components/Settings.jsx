@@ -4,6 +4,7 @@ function Settings() {
   const [hours, setHours] = useState(8);
   const [minutes, setMinutes] = useState(0);
   const [seconds, setSeconds] = useState(0);
+  const [minRestHours, setMinRestHours] = useState(11);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -25,6 +26,10 @@ function Settings() {
         setHours(h);
         setMinutes(m);
         setSeconds(s);
+        
+        if (data.MinRestHours) {
+          setMinRestHours(data.MinRestHours);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -47,7 +52,10 @@ function Settings() {
       await fetch('http://localhost:8080/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ MaxShiftHours: totalHours })
+        body: JSON.stringify({ 
+          MaxShiftHours: totalHours,
+          MinRestHours: parseFloat(minRestHours)
+        })
       });
       alert('Settings saved successfully!');
     } catch (err) {
@@ -113,6 +121,26 @@ function Settings() {
                   The Auto-Scheduling Engine will automatically split tasks longer than this duration into multiple shifts.
                 </div>
               </div>
+
+              <div className="mb-4">
+                <label className="form-label fw-medium">Minimum Rest Hours Between Shifts</label>
+                <div className="input-group">
+                  <input 
+                    type="number" 
+                    className="form-control text-center" 
+                    value={minRestHours} 
+                    onChange={(e) => setMinRestHours(e.target.value)}
+                    min="0"
+                    step="0.5"
+                    required 
+                  />
+                  <span className="input-group-text">Hours</span>
+                </div>
+                <div className="form-text mt-2">
+                  The Rule Engine will reject any scheduling or swap requests that violate this minimum rest period (default: 11h).
+                </div>
+              </div>
+
               <button type="submit" className="btn btn-primary w-100" disabled={saving}>
                 {saving ? 'Saving...' : 'Save Settings'}
               </button>

@@ -34,3 +34,10 @@ type SettingService interface {
 	GetSetting() (*domain.SystemSetting, error)
 	UpdateSetting(maxHours float64) error
 }
+
+type ShiftSwapService interface {
+	RequestSwap(requesterID, targetUserID, shiftID uint) (*domain.ShiftSwap, error)
+	ApproveSwap(swapID uint) error
+	RejectSwap(swapID uint) error
+	GetPendingSwaps() ([]*domain.ShiftSwap, error)
+}

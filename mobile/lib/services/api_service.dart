@@ -69,4 +69,22 @@ class ApiService {
     );
     return response.statusCode == 200;
   }
+
+  static Future<bool> requestSwap(int requesterId, int targetUserId, int shiftId) async {
+    final token = await getToken();
+    if (token == null) return false;
+    final response = await http.post(
+      Uri.parse('$baseUrl/swaps'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json'
+      },
+      body: jsonEncode({
+        'RequesterID': requesterId,
+        'TargetUserID': targetUserId,
+        'ShiftID': shiftId
+      })
+    );
+    return response.statusCode == 201;
+  }
 }

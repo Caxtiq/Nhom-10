@@ -4,6 +4,7 @@ import ShiftDashboard from './components/ShiftDashboard';
 import ShiftCalendar from './components/ShiftCalendar';
 import TaskManagement from './components/TaskManagement';
 import Settings from './components/Settings';
+import SwapManagement from './components/SwapManagement';
 
 function AdminDashboard({ onLogout }) {
   const [activeTab, setActiveTab] = useState('shifts');
@@ -51,6 +52,14 @@ function AdminDashboard({ onLogout }) {
                 <i className="bi bi-people me-2"></i> Team Members
               </button>
             </li>
+            <li className="nav-item mb-2">
+              <button 
+                className={`nav-link w-100 text-start ${activeTab === 'swaps' ? 'active bg-dark text-white' : 'text-dark hover-bg-light'}`}
+                onClick={() => setActiveTab('swaps')}
+              >
+                <i className="bi bi-arrow-left-right me-2"></i> Swap Requests
+              </button>
+            </li>
             <li className="nav-item mt-4 pt-3 border-top">
               <button 
                 className={`nav-link w-100 text-start ${activeTab === 'settings' ? 'active bg-dark text-white' : 'text-dark hover-bg-light'}`}
@@ -75,6 +84,7 @@ function AdminDashboard({ onLogout }) {
               {activeTab === 'calendar' && <ShiftCalendar />}
               {activeTab === 'shifts' && <ShiftDashboard />}
               {activeTab === 'users' && <UserList />}
+              {activeTab === 'swaps' && <SwapManagement />}
               {activeTab === 'settings' && <Settings />}
             </main>
           </div>

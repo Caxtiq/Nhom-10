@@ -22,6 +22,8 @@ type User struct {
 	PasswordHash    string           `gorm:"not null;default:''"`
 	Phone           string           `gorm:"type:varchar(20)"`
 	Role            Role             `gorm:"type:varchar(20);not null;default:'employee'"`
+	SkillLevel      int              `gorm:"not null;default:1"`
+	MaxWeeklyHours  int              `gorm:"not null;default:40"`
 	Shifts          []Shift          `gorm:"foreignKey:UserID"`
 	TimeOffRequests []TimeOffRequest `gorm:"foreignKey:UserID"`
 }

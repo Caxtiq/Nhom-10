@@ -42,3 +42,7 @@ func (r *shiftRepo) FindAll() ([]*domain.Shift, error) {
 func (r *shiftRepo) Delete(id uint) error {
 	return r.db.Delete(&domain.Shift{}, id).Error
 }
+
+func (r *shiftRepo) Update(shift *domain.Shift) error {
+	return r.db.Save(shift).Error
+}

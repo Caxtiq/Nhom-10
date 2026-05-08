@@ -35,6 +35,11 @@ func SetupRouter(handler *Handler) *gin.Engine {
 			
 			protected.GET("/settings", handler.GetSetting)
 			protected.PUT("/settings", handler.UpdateSetting)
+
+			protected.GET("/swaps", handler.GetPendingSwaps)
+			protected.POST("/swaps", handler.RequestSwap)
+			protected.POST("/swaps/:id/approve", handler.ApproveSwap)
+			protected.POST("/swaps/:id/reject", handler.RejectSwap)
 		}
 	}
 

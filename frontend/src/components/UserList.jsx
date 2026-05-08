@@ -6,6 +6,8 @@ function UserList() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('employee');
+  const [skillLevel, setSkillLevel] = useState(1);
+  const [maxWeeklyHours, setMaxWeeklyHours] = useState(40);
 
   useEffect(() => {
     fetchUsers();
@@ -29,10 +31,12 @@ function UserList() {
       await fetch('http://localhost:8080/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, role })
+        body: JSON.stringify({ name, email, role, skillLevel: parseInt(skillLevel), maxWeeklyHours: parseInt(maxWeeklyHours) })
       });
       setName('');
       setEmail('');
+      setSkillLevel(1);
+      setMaxWeeklyHours(40);
       fetchUsers();
     } catch (err) {
       console.error(err);
@@ -74,6 +78,28 @@ function UserList() {
                   <option value="admin">Admin</option>
                 </select>
               </div>
+              <div className="mb-3">
+                <label className="form-label text-muted small">Skill Level (1-5)</label>
+                <input 
+                  type="number" 
+                  className="form-control"
+                  value={skillLevel} 
+                  onChange={(e) => setSkillLevel(e.target.value)} 
+                  min="1" max="5"
+                  required 
+                />
+              </div>
+              <div className="mb-4">
+                <label className="form-label text-muted small">Max Weekly OT Limit (Hours)</label>
+                <input 
+                  type="number" 
+                  className="form-control"
+                  value={maxWeeklyHours} 
+                  onChange={(e) => setMaxWeeklyHours(e.target.value)} 
+                  min="1" max="100"
+                  required 
+                />
+              </div>
               <button type="submit" className="btn btn-primary w-100">Add Member</button>
             </form>
           </div>
@@ -92,6 +118,8 @@ function UserList() {
                     <th>Name</th>
                     <th>Email</th>
                     <th>Role</th>
+                    <th>Skill</th>
+                    <th>Max Hrs</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -105,6 +133,8 @@ function UserList() {
                           {u.Role}
                         </span>
                       </td>
+                      <td>Level {u.SkillLevel || 1}</td>
+                      <td>{u.MaxWeeklyHours || 40}h</td>
                     </tr>
                   ))}
                   {users.length === 0 && (

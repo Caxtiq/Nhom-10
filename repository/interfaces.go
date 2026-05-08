@@ -15,6 +15,7 @@ type ShiftRepository interface {
 	FindAll() ([]*domain.Shift, error)
 	Delete(id uint) error
 	FindByID(id uint) (*domain.Shift, error)
+	Update(shift *domain.Shift) error
 }
 
 type TaskRepository interface {
@@ -27,6 +28,13 @@ type TaskRepository interface {
 type SettingRepository interface {
 	Get() (*domain.SystemSetting, error)
 	Update(setting *domain.SystemSetting) error
+}
+
+type ShiftSwapRepository interface {
+	Save(swap *domain.ShiftSwap) error
+	FindByID(id uint) (*domain.ShiftSwap, error)
+	FindByStatus(status string) ([]*domain.ShiftSwap, error)
+	Update(swap *domain.ShiftSwap) error
 }
 
 // ... other repositories like LocationRepository, TimeOffRepository
