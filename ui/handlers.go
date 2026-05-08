@@ -247,3 +247,19 @@ func (h *Handler) RejectSwap(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Swap rejected"})
 }
+
+func (h *Handler) AutoSwapRequest(c *gin.Context) {
+	var input struct {
+		RequesterID uint `json:"RequesterID"`
+		ShiftID     uint `json:"ShiftID"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.swapService.AutoSwap(input.RequesterID, input.ShiftID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Shift successfully auto-swapped"})
+}

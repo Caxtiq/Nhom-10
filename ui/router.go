@@ -40,6 +40,7 @@ func SetupRouter(handler *Handler) *gin.Engine {
 			protected.POST("/swaps", handler.RequestSwap)
 			protected.POST("/swaps/:id/approve", handler.ApproveSwap)
 			protected.POST("/swaps/:id/reject", handler.RejectSwap)
+			protected.POST("/swaps/auto", handler.AutoSwapRequest)
 		}
 	}
 

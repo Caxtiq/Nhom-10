@@ -40,4 +40,5 @@ type ShiftSwapService interface {
 	ApproveSwap(swapID uint) error
 	RejectSwap(swapID uint) error
 	GetPendingSwaps() ([]*domain.ShiftSwap, error)
+	AutoSwap(requesterID, shiftID uint) error
 }

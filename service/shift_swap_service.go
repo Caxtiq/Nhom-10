@@ -97,3 +97,73 @@ func (s *shiftSwapService) RejectSwap(swapID uint) error {
 func (s *shiftSwapService) GetPendingSwaps() ([]*domain.ShiftSwap, error) {
 	return s.swapRepo.FindByStatus("pending")
 }
+
+func (s *shiftSwapService) AutoSwap(requesterID, shiftID uint) error {
+	shift, err := s.shiftRepo.FindByID(shiftID)
+	if err != nil {
+		return err
+	}
+
+	if shift.UserID != requesterID {
+		return errors.New("you can only auto-swap your own shift")
+	}
+
+	users, err := s.userRepo.FindAll()
+	if err != nil {
+		return err
+	}
+
+	allShifts, _ := s.shiftRepo.FindAll()
+	userShiftsMap := make(map[uint][]domain.Shift)
+	for _, sh := range allShifts {
+		userShiftsMap[sh.UserID] = append(userShiftsMap[sh.UserID], *sh)
+	}
+
+	setting, _ := s.settingRepo.Get()
+	minRest := 11.0
+	if setting != nil && setting.MinRestHours > 0 {
+		minRest = setting.MinRestHours
+	}
+
+	ruleEngine := NewRuleEngine(minRest)
+
+	var bestUser *domain.User
+	var bestScore int = -9999
+
+	for _, u := range users {
+		if u.ID == requesterID {
+			continue
+		}
+
+		// Check if valid. We bypass Role and Skill exact matching here (assume any valid substitute works)
+		// by passing the user's own role and skill so it passes the equality check in IsValid.
+		if ruleEngine.IsValid(u, userShiftsMap[u.ID], u.Role, u.SkillLevel, shift.StartTime, shift.EndTime) {
+			score := ruleEngine.CalculateScore(u, userShiftsMap[u.ID], u.SkillLevel)
+			if bestUser == nil || score > bestScore {
+				bestUser = u
+				bestScore = score
+			}
+		}
+	}
+
+	if bestUser == nil {
+		return errors.New("no eligible colleague found to take this shift automatically")
+	}
+
+	// Transfer shift
+	shift.UserID = bestUser.ID
+	if err := s.shiftRepo.Update(shift); err != nil {
+		return err
+	}
+
+	// Record swap history
+	swap := &domain.ShiftSwap{
+		RequesterID:  requesterID,
+		TargetUserID: bestUser.ID,
+		ShiftID:      shiftID,
+		Status:       "auto-approved",
+	}
+	s.swapRepo.Save(swap)
+
+	return nil
+}

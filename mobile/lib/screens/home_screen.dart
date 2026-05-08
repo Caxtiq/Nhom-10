@@ -48,55 +48,16 @@ class _HomeScreenState extends State<HomeScreen> {
     if (success) _loadShifts();
   }
 
-  void _showSwapDialog(int requesterId, int shiftId) {
-    final TextEditingController _targetIdController = TextEditingController();
-
-    showCupertinoDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return CupertinoAlertDialog(
-          title: const Text("Request Swap"),
-          content: Column(
-            children: [
-              const SizedBox(height: 10),
-              const Text("Enter the User ID of the colleague you want to swap with:"),
-              const SizedBox(height: 16),
-              CupertinoTextField(
-                controller: _targetIdController,
-                keyboardType: TextInputType.number,
-                placeholder: "Target User ID",
-                padding: const EdgeInsets.all(12),
-              ),
-            ],
-          ),
-          actions: [
-            CupertinoDialogAction(
-              child: const Text("Cancel"),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            CupertinoDialogAction(
-              isDefaultAction: true,
-              child: const Text("Submit"),
-              onPressed: () async {
-                final targetIdStr = _targetIdController.text;
-                if (targetIdStr.isNotEmpty) {
-                  final targetId = int.tryParse(targetIdStr);
-                  if (targetId != null) {
-                    Navigator.of(context).pop();
-                    bool success = await ApiService.requestSwap(requesterId, targetId, shiftId);
-                    if (success) {
-                      _showSuccessDialog();
-                    } else {
-                      _showErrorDialog();
-                    }
-                  }
-                }
-              },
-            ),
-          ],
-        );
-      },
-    );
+  void _showSwapDialog(int requesterId, int shiftId) async {
+    setState(() => _isLoading = true);
+    bool success = await ApiService.autoSwap(requesterId, shiftId);
+    if (success) {
+      _showSuccessDialog();
+      _loadShifts(); // Refresh to see shift disappear if it was successfully reassigned
+    } else {
+      _showErrorDialog();
+    }
+    setState(() => _isLoading = false);
   }
 
   void _showSuccessDialog() {
@@ -104,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (context) => CupertinoAlertDialog(
         title: const Text("Success"),
-        content: const Text("Swap request submitted. Awaiting manager approval."),
+        content: const Text("Hệ thống đã tự động tìm được người thay thế và chuyển ca thành công!"),
         actions: [
           CupertinoDialogAction(
             child: const Text("OK"),
