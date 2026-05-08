@@ -20,6 +20,9 @@ function ShiftCalendar() {
   const [shifts, setShifts] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentView, setCurrentView] = useState('week');
+  const [zoomStep, setZoomStep] = useState(30); // minutes per slot
 
   useEffect(() => {
     fetchData();
@@ -64,7 +67,17 @@ function ShiftCalendar() {
     <div className="card h-100 shadow-sm border-0">
       <div className="card-header d-flex justify-content-between align-items-center bg-white border-bottom py-3">
         <span className="fw-bold">Interactive Calendar Board</span>
-        <div>
+        <div className="d-flex align-items-center gap-3">
+          {currentView !== 'month' && (
+            <div className="d-flex align-items-center">
+              <span className="text-muted small me-2">Zoom:</span>
+              <div className="btn-group btn-group-sm">
+                <button className={`btn ${zoomStep === 60 ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setZoomStep(60)}>Out</button>
+                <button className={`btn ${zoomStep === 30 ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setZoomStep(30)}>Norm</button>
+                <button className={`btn ${zoomStep === 15 ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setZoomStep(15)}>In</button>
+              </div>
+            </div>
+          )}
           <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2">
             <div className="spinner-grow spinner-grow-sm me-2" role="status" style={{width: '0.7rem', height: '0.7rem'}}>
               <span className="visually-hidden">Loading...</span>
@@ -81,9 +94,13 @@ function ShiftCalendar() {
             startAccessor="start"
             endAccessor="end"
             style={{ height: '100%' }}
-            defaultView="week"
+            view={currentView}
+            onView={setCurrentView}
+            date={currentDate}
+            onNavigate={setCurrentDate}
             views={['month', 'week', 'day']}
-            step={30}
+            step={zoomStep}
+            timeslots={2}
             showMultiDayTimes
           />
         )}
