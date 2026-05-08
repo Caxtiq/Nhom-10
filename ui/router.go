@@ -41,6 +41,9 @@ func SetupRouter(handler *Handler) *gin.Engine {
 			protected.POST("/swaps/:id/approve", handler.ApproveSwap)
 			protected.POST("/swaps/:id/reject", handler.RejectSwap)
 			protected.POST("/swaps/auto", handler.AutoSwapRequest)
+
+			protected.GET("/analytics/attrition", handler.GetAttritionRisks)
+			protected.GET("/analytics/backups/:id", handler.GetBackupSuggestions)
 		}
 	}
 

@@ -18,9 +18,10 @@ type Handler struct {
 	settingService service.SettingService
 	authService    service.AuthService
 	swapService    service.ShiftSwapService
+	analyticsService service.AnalyticsService
 }
 
-func NewHandler(us service.UserService, ss service.ShiftService, ts service.TaskService, set service.SettingService, as service.AuthService, swap service.ShiftSwapService) *Handler {
+func NewHandler(us service.UserService, ss service.ShiftService, ts service.TaskService, set service.SettingService, as service.AuthService, swap service.ShiftSwapService, analytics service.AnalyticsService) *Handler {
 	return &Handler{
 		userService:    us,
 		shiftService:   ss,
@@ -28,6 +29,7 @@ func NewHandler(us service.UserService, ss service.ShiftService, ts service.Task
 		settingService: set,
 		authService:    as,
 		swapService:    swap,
+		analyticsService: analytics,
 	}
 }
 
@@ -262,4 +264,29 @@ func (h *Handler) AutoSwapRequest(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Shift successfully auto-swapped"})
+}
+
+func (h *Handler) GetAttritionRisks(c *gin.Context) {
+	risks, err := h.analyticsService.GetAttritionRisks()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, risks)
+}
+
+func (h *Handler) GetBackupSuggestions(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
+
+	suggestions, err := h.analyticsService.GetBackupSuggestions(uint(id))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, suggestions)
 }

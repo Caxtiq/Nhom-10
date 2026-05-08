@@ -42,3 +42,8 @@ type ShiftSwapService interface {
 	GetPendingSwaps() ([]*domain.ShiftSwap, error)
 	AutoSwap(requesterID, shiftID uint) error
 }
+
+type AnalyticsService interface {
+	GetAttritionRisks() ([]*domain.AttritionRisk, error)
+	GetBackupSuggestions(targetUserID uint) ([]*domain.BackupSuggestion, error)
+}
