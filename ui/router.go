@@ -58,6 +58,7 @@ func SetupRouter(handler *Handler) *gin.Engine {
 			protected.POST("/health/:id/approve", handler.ApproveHealthDeclaration)
 			protected.POST("/health/:id/reject", handler.RejectHealthDeclaration)
 			protected.GET("/health/ai-suggest", handler.SuggestHealthPoints)
+			protected.GET("/health/conditions", handler.GetKnownHealthConditions)
 		}
 	}
 

@@ -59,6 +59,7 @@ type AnalyticsService interface {
 type HealthService interface {
 	SubmitDeclaration(decl *domain.HealthDeclaration) error
 	GetPendingDeclarations() ([]*domain.HealthDeclaration, error)
+	GetKnownConditions() ([]*domain.KnownCondition, error)
 	SuggestPoints(condition string) int
 	ApproveDeclaration(id uint, pointsDeducted int, adminNotes string) error
 	RejectDeclaration(id uint, adminNotes string) error

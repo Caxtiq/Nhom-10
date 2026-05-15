@@ -40,12 +40,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showSwapDialog(int requesterId, int shiftId) async {
     setState(() => _isLoading = true);
-    bool success = await ApiService.autoSwap(requesterId, shiftId);
-    if (success) {
+    String? error = await ApiService.autoSwap(requesterId, shiftId);
+    if (error == null) {
       _showSuccessDialog();
       _loadShifts(); // Refresh to see shift disappear if it was successfully reassigned
     } else {
-      _showErrorDialog();
+      _showErrorDialog(error);
     }
     setState(() => _isLoading = false);
   }
@@ -66,12 +66,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showErrorDialog() {
+  void _showErrorDialog(String errorMessage) {
     showCupertinoDialog(
       context: context,
       builder: (context) => CupertinoAlertDialog(
         title: const Text("Error"),
-        content: const Text("Failed to submit swap request. Please try again."),
+        content: Text(errorMessage),
         actions: [
           CupertinoDialogAction(
             child: const Text("OK"),

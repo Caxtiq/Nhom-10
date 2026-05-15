@@ -12,6 +12,10 @@ function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const [healthThresholdModerate, setHealthThresholdModerate] = useState(70);
+  const [moderateHealthMaxOTPerWeek, setModerateHealthMaxOTPerWeek] = useState(1);
+  const [healthThresholdLow, setHealthThresholdLow] = useState(50);
+
   useEffect(() => {
     fetchSettings();
   }, []);
@@ -29,6 +33,9 @@ function Settings() {
         if (data.MorningShiftEnd) setMorningShiftEnd(data.MorningShiftEnd);
         if (data.AfternoonShiftStart) setAfternoonShiftStart(data.AfternoonShiftStart);
         if (data.AfternoonShiftEnd) setAfternoonShiftEnd(data.AfternoonShiftEnd);
+        if (data.HealthThresholdModerate !== undefined) setHealthThresholdModerate(data.HealthThresholdModerate);
+        if (data.ModerateHealthMaxOTPerWeek !== undefined) setModerateHealthMaxOTPerWeek(data.ModerateHealthMaxOTPerWeek);
+        if (data.HealthThresholdLow !== undefined) setHealthThresholdLow(data.HealthThresholdLow);
       }
     } catch (err) {
       console.error(err);
@@ -53,7 +60,10 @@ function Settings() {
           MorningShiftStart: morningShiftStart,
           MorningShiftEnd: morningShiftEnd,
           AfternoonShiftStart: afternoonShiftStart,
-          AfternoonShiftEnd: afternoonShiftEnd
+          AfternoonShiftEnd: afternoonShiftEnd,
+          HealthThresholdModerate: parseInt(healthThresholdModerate),
+          ModerateHealthMaxOTPerWeek: parseInt(moderateHealthMaxOTPerWeek),
+          HealthThresholdLow: parseInt(healthThresholdLow)
         })
       });
       alert('Settings saved successfully!');
@@ -184,6 +194,25 @@ function Settings() {
                 </div>
                 <div className="form-text mt-1">
                   The Rule Engine will reject scheduling requests that violate this.
+                </div>
+              </div>
+
+              <h5 className="mb-3 text-secondary border-bottom pb-2">AI Health &amp; Workload Rules</h5>
+              <div className="row mb-4">
+                <div className="col-md-4">
+                  <label className="form-label fw-medium text-warning">Moderate Health Threshold</label>
+                  <input type="number" className="form-control text-center" value={healthThresholdModerate} onChange={(e) => setHealthThresholdModerate(e.target.value)} min="0" max="100" required />
+                  <div className="form-text">If Health &lt; this value, double shifts are limited to alternating days.</div>
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label fw-medium text-warning">Moderate Health Max Weekly OT</label>
+                  <input type="number" className="form-control text-center" value={moderateHealthMaxOTPerWeek} onChange={(e) => setModerateHealthMaxOTPerWeek(e.target.value)} min="0" required />
+                  <div className="form-text">Max days with &gt; 1 shift allowed per week.</div>
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label fw-medium text-danger">Low Health Threshold</label>
+                  <input type="number" className="form-control text-center" value={healthThresholdLow} onChange={(e) => setHealthThresholdLow(e.target.value)} min="0" max="100" required />
+                  <div className="form-text">If Health &lt; this value, max 1 shift per day &amp; no OT.</div>
                 </div>
               </div>
 

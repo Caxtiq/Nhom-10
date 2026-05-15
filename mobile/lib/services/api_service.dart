@@ -93,18 +93,26 @@ class ApiService {
     return response.statusCode == 201;
   }
 
-  static Future<bool> autoSwap(int requesterId, int shiftId) async {
+  static Future<String?> autoSwap(int requesterId, int shiftId) async {
     final token = await getToken();
-    if (token == null) return false;
-    final response = await http.post(
-      Uri.parse('$baseUrl/swaps/auto'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({'RequesterID': requesterId, 'ShiftID': shiftId}),
-    );
-    return response.statusCode == 200;
+    if (token == null) return "Lỗi xác thực (Vui lòng đăng nhập lại)";
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/swaps/auto'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'RequesterID': requesterId, 'ShiftID': shiftId}),
+      );
+      if (response.statusCode == 200) {
+        return null; // Success
+      }
+      final data = jsonDecode(response.body);
+      return data['error'] ?? "Lỗi không xác định";
+    } catch (e) {
+      return "Lỗi kết nối máy chủ";
+    }
   }
 
   static Future<Map<String, dynamic>?> getMe() async {
@@ -125,6 +133,25 @@ class ApiService {
       print("getMe error: $e");
     }
     return null;
+  }
+
+  static Future<List<dynamic>> getKnownConditions() async {
+    final token = await getToken();
+    if (token == null) return [];
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/health/conditions'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      }
+    } catch (e) {
+      print("getKnownConditions error: $e");
+    }
+    return [];
   }
 
   static Future<bool> submitHealthDeclaration(int userId, String condition, String proofFilePath) async {

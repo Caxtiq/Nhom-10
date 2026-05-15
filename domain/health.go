@@ -12,3 +12,9 @@ type HealthDeclaration struct {
 	PointsDeducted int
 	AdminNotes     string `gorm:"type:text"`
 }
+
+type KnownCondition struct {
+	gorm.Model
+	Condition      string `gorm:"uniqueIndex;not null"`
+	PointsDeducted int    `gorm:"not null"`
+}

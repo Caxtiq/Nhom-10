@@ -14,6 +14,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _user;
+  List<dynamic> _knownConditions = [];
   bool _isLoading = true;
   bool _isSubmitting = false;
 
@@ -29,8 +30,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadProfile() async {
     setState(() => _isLoading = true);
     final user = await ApiService.getMe();
+    final conditions = await ApiService.getKnownConditions();
     setState(() {
       _user = user;
+      _knownConditions = conditions;
       _isLoading = false;
     });
   }
@@ -77,7 +80,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isSubmitting = false);
 
     if (success) {
-      _showDialog("Success", "Health declaration submitted successfully. Pending manager approval.");
+      _showDialog("Success", "Health declaration submitted successfully. Auto-approved conditions are applied immediately, otherwise pending Admin/Manager approval.");
       setState(() {
         _conditionController.clear();
         _proofImage = null;
@@ -243,6 +246,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
+                            if (_knownConditions.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              const Text("Suggested (Auto-Approve)", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: CupertinoColors.activeBlue)),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: _knownConditions.map((cond) {
+                                  return GestureDetector(
+                                    onTap: () {
+                                      _conditionController.text = cond['Condition'];
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: CupertinoColors.activeBlue.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(color: CupertinoColors.activeBlue.withOpacity(0.3)),
+                                      ),
+                                      child: Text(
+                                        cond['Condition'],
+                                        style: const TextStyle(color: CupertinoColors.activeBlue, fontSize: 12, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
                             const SizedBox(height: 16),
                             const Text("Proof / Certificate", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: CupertinoColors.systemGrey)),
                             const SizedBox(height: 8),

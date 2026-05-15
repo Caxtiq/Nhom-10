@@ -13,4 +13,9 @@ type SystemSetting struct {
 	MorningShiftEnd     string  `json:"MorningShiftEnd" gorm:"default:'12:00'"`
 	AfternoonShiftStart string  `json:"AfternoonShiftStart" gorm:"default:'13:00'"`
 	AfternoonShiftEnd   string  `json:"AfternoonShiftEnd" gorm:"default:'17:00'"`
+
+	// Health-Based Scheduling Rules
+	HealthThresholdModerate    int `json:"HealthThresholdModerate" gorm:"default:70"`
+	ModerateHealthMaxOTPerWeek int `json:"ModerateHealthMaxOTPerWeek" gorm:"default:1"`
+	HealthThresholdLow         int `json:"HealthThresholdLow" gorm:"default:50"`
 }

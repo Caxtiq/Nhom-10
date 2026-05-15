@@ -7,10 +7,11 @@ import (
 
 type RuleEngine struct {
 	MinRestHours float64
+	Setting      *domain.SystemSetting
 }
 
-func NewRuleEngine(minRest float64) *RuleEngine {
-	return &RuleEngine{MinRestHours: minRest}
+func NewRuleEngine(minRest float64, setting *domain.SystemSetting) *RuleEngine {
+	return &RuleEngine{MinRestHours: minRest, Setting: setting}
 }
 
 // IsValid checks all hard constraints for assigning a user to a task segment
@@ -26,10 +27,27 @@ func (e *RuleEngine) IsValid(user *domain.User, userShifts []domain.Shift, requi
 	// 2. Calculate Weekly Hours & OT Limit
 	var weeklyHours float64
 	yTarget, wTarget := startTime.ISOWeek()
+	targetDayString := startTime.Format("2006-01-02")
+	prevDayString := startTime.Add(-24 * time.Hour).Format("2006-01-02")
+	
+	targetDayShifts := 0
+	prevDayShifts := 0
+	shiftsPerDayInWeek := make(map[string]int)
+
 	for _, s := range userShifts {
 		yShift, wShift := s.StartTime.ISOWeek()
+		dayStr := s.StartTime.Format("2006-01-02")
+		
 		if yShift == yTarget && wShift == wTarget {
 			weeklyHours += s.EndTime.Sub(s.StartTime).Hours()
+			shiftsPerDayInWeek[dayStr]++
+			if dayStr == targetDayString {
+				targetDayShifts++
+			}
+		}
+		
+		if dayStr == prevDayString {
+			prevDayShifts++
 		}
 	}
 	shiftDuration := endTime.Sub(startTime).Hours()
@@ -57,6 +75,30 @@ func (e *RuleEngine) IsValid(user *domain.User, userShifts []domain.Shift, requi
 			restTime := s.StartTime.Sub(endTime).Hours()
 			if restTime < e.MinRestHours {
 				return false
+			}
+		}
+	}
+
+	// 4. AI Health-Based Scheduling Rules
+	shiftsPerDayInWeek[targetDayString]++
+	weeklyOTCount := 0
+	for _, count := range shiftsPerDayInWeek {
+		if count >= 2 {
+			weeklyOTCount++
+		}
+	}
+
+	if e.Setting != nil {
+		if user.EnergyScore < e.Setting.HealthThresholdLow {
+			if targetDayShifts >= 1 {
+				return false // Max 1 shift per day
+			}
+		} else if user.EnergyScore < e.Setting.HealthThresholdModerate {
+			if prevDayShifts >= 2 && targetDayShifts >= 1 {
+				return false // Alternating heavy shifts: if yesterday was heavy, today is light
+			}
+			if weeklyOTCount > e.Setting.ModerateHealthMaxOTPerWeek {
+				return false // Max OT (heavy days) per week
 			}
 		}
 	}

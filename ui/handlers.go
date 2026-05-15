@@ -475,6 +475,15 @@ func (h *Handler) GetPendingHealthDeclarations(c *gin.Context) {
 	c.JSON(http.StatusOK, decls)
 }
 
+func (h *Handler) GetKnownHealthConditions(c *gin.Context) {
+	conditions, err := h.healthService.GetKnownConditions()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, conditions)
+}
+
 func (h *Handler) ApproveHealthDeclaration(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.ParseUint(idStr, 10, 32)

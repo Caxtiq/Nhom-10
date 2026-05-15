@@ -66,7 +66,7 @@ func (s *shiftSwapService) ApproveSwap(swapID uint) error {
 		minRest = setting.MinRestHours
 	}
 
-	ruleEngine := NewRuleEngine(minRest)
+	ruleEngine := NewRuleEngine(minRest, setting)
 
 	// In a real app we'd need RequiredRole and RequiredSkill from the Task,
 	// but here we just check rest and OT hours for the swap.
@@ -125,7 +125,7 @@ func (s *shiftSwapService) AutoSwap(requesterID, shiftID uint) error {
 		minRest = setting.MinRestHours
 	}
 
-	ruleEngine := NewRuleEngine(minRest)
+	ruleEngine := NewRuleEngine(minRest, setting)
 
 	var bestUser *domain.User
 	var bestScore int = -9999

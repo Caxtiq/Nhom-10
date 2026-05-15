@@ -16,7 +16,43 @@ func NewHealthService(db *gorm.DB) HealthService {
 	return &healthService{db: db}
 }
 
+func (s *healthService) GetKnownConditions() ([]*domain.KnownCondition, error) {
+	var conditions []*domain.KnownCondition
+	if err := s.db.Find(&conditions).Error; err != nil {
+		return nil, err
+	}
+	return conditions, nil
+}
+
 func (s *healthService) SubmitDeclaration(decl *domain.HealthDeclaration) error {
+	var known domain.KnownCondition
+	if err := s.db.Where("condition = ?", decl.Condition).First(&known).Error; err == nil {
+		decl.Status = "approved"
+		var user domain.User
+		if err := s.db.First(&user, decl.UserID).Error; err == nil {
+			actualDeducted := known.PointsDeducted
+			adminNotes := "Auto-approved based on known database condition."
+			if user.EnergyScore < 50 && actualDeducted > 10 {
+				actualDeducted = 10
+				adminNotes += " [Auto-adjusted to 10 because energy < 50]"
+			} else if user.EnergyScore < 50 && actualDeducted > 5 {
+				actualDeducted = 5
+				adminNotes += " [Auto-adjusted to 5 because energy < 50]"
+			}
+			
+			decl.PointsDeducted = actualDeducted
+			decl.AdminNotes = adminNotes
+			
+			if err := s.db.Create(decl).Error; err != nil {
+				return err
+			}
+			
+			user.EnergyScore -= actualDeducted
+			if user.EnergyScore < 0 { user.EnergyScore = 0 }
+			return s.db.Save(&user).Error
+		}
+	}
+
 	decl.Status = "pending"
 	return s.db.Create(decl).Error
 }
@@ -87,7 +123,19 @@ func (s *healthService) ApproveDeclaration(id uint, pointsDeducted int, adminNot
 			user.EnergyScore = 0
 		}
 
-		return tx.Save(&user).Error
+		if err := tx.Save(&user).Error; err != nil {
+			return err
+		}
+
+		var kc domain.KnownCondition
+		if err := tx.Where("condition = ?", decl.Condition).First(&kc).Error; err != nil {
+			tx.Create(&domain.KnownCondition{Condition: decl.Condition, PointsDeducted: actualDeducted})
+		} else {
+			kc.PointsDeducted = actualDeducted
+			tx.Save(&kc)
+		}
+
+		return nil
 	})
 }
 

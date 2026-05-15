@@ -81,7 +81,7 @@ func (s *taskService) AutoScheduleShifts() (int, error) {
 		}
 	}
 
-	ruleEngine := NewRuleEngine(minRest)
+	ruleEngine := NewRuleEngine(minRest, setting)
 	shiftsScheduled := 0
 
 	for _, task := range unassignedTasks {
