@@ -49,6 +49,7 @@ type ShiftSwapService interface {
 	RejectSwap(swapID uint) error
 	GetPendingSwaps() ([]*domain.ShiftSwap, error)
 	AutoSwap(requesterID, shiftID uint) error
+	AssignSwap(swapID, targetUserID uint) error
 }
 
 type AnalyticsService interface {

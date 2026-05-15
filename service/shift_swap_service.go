@@ -152,7 +152,17 @@ func (s *shiftSwapService) AutoSwap(requesterID, shiftID uint) error {
 	}
 
 	if bestUser == nil {
-		return errors.New("no eligible colleague found to take this shift automatically")
+		// Fallback to manual admin assignment
+		swap := &domain.ShiftSwap{
+			RequesterID:  requesterID,
+			TargetUserID: 0,
+			ShiftID:      shiftID,
+			Status:       "pending_admin_assignment",
+		}
+		if err := s.swapRepo.Save(swap); err != nil {
+			return err
+		}
+		return errors.New("fallback_manual")
 	}
 
 	// Transfer shift
@@ -166,9 +176,31 @@ func (s *shiftSwapService) AutoSwap(requesterID, shiftID uint) error {
 		RequesterID:  requesterID,
 		TargetUserID: bestUser.ID,
 		ShiftID:      shiftID,
-		Status:       "auto-approved",
+		Status:       "approved", // Auto-approved by AI
 	}
-	s.swapRepo.Save(swap)
+	return s.swapRepo.Save(swap)
+}
 
-	return nil
+func (s *shiftSwapService) AssignSwap(swapID, targetUserID uint) error {
+	swap, err := s.swapRepo.FindByID(swapID)
+	if err != nil {
+		return err
+	}
+	if swap.Status != "pending" && swap.Status != "pending_admin_assignment" {
+		return errors.New("only pending swaps can be assigned")
+	}
+
+	shift, err := s.shiftRepo.FindByID(swap.ShiftID)
+	if err != nil {
+		return err
+	}
+
+	shift.UserID = targetUserID
+	if err := s.shiftRepo.Update(shift); err != nil {
+		return err
+	}
+
+	swap.TargetUserID = targetUserID
+	swap.Status = "approved"
+	return s.swapRepo.Update(swap)
 }

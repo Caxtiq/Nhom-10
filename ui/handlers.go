@@ -378,6 +378,29 @@ func (h *Handler) ApproveSwap(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Swap approved"})
 }
 
+func (h *Handler) AssignSwap(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid swap id"})
+		return
+	}
+	
+	var input struct {
+		TargetUserID uint `json:"TargetUserID"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	
+	if err := h.swapService.AssignSwap(uint(id), input.TargetUserID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Swap assigned successfully"})
+}
+
 func (h *Handler) RejectSwap(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
@@ -402,10 +425,14 @@ func (h *Handler) AutoSwapRequest(c *gin.Context) {
 		return
 	}
 	if err := h.swapService.AutoSwap(input.RequesterID, input.ShiftID); err != nil {
+		if err.Error() == "fallback_manual" {
+			c.JSON(http.StatusOK, gin.H{"message": "No eligible colleague found. The request has been sent to the Admin Panel for manual assignment.", "fallback": true})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Shift successfully auto-swapped"})
+	c.JSON(http.StatusOK, gin.H{"message": "Shift successfully auto-swapped", "fallback": false})
 }
 
 func (h *Handler) GetAttritionRisks(c *gin.Context) {

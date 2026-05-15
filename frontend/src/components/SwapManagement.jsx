@@ -2,11 +2,24 @@ import { useState, useEffect } from 'react';
 
 function SwapManagement() {
   const [swaps, setSwaps] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [assignModalData, setAssignModalData] = useState(null);
 
   useEffect(() => {
     fetchSwaps();
+    fetchUsers();
   }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('http://localhost:8080/api/users');
+      const data = await res.json();
+      if (Array.isArray(data)) setUsers(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchSwaps = async () => {
     try {
@@ -56,6 +69,27 @@ function SwapManagement() {
     }
   };
 
+  const handleAssign = async (id, targetUserId) => {
+    try {
+      const res = await fetch(`http://localhost:8080/api/swaps/${id}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ TargetUserID: parseInt(targetUserId) })
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        alert(`Assignment Failed: ${errData.error}`);
+        return;
+      }
+      alert('Swap assigned successfully!');
+      setAssignModalData(null);
+      fetchSwaps();
+    } catch (err) {
+      console.error(err);
+      alert('An error occurred while assigning.');
+    }
+  };
+
   return (
     <div className="card h-100 shadow-sm border-0">
       <div className="card-header bg-white d-flex justify-content-between align-items-center py-3">
@@ -84,15 +118,30 @@ function SwapManagement() {
                 <tr key={s.ID}>
                   <td className="px-4 fw-medium text-muted">#{s.ID}</td>
                   <td>User #{s.RequesterID}</td>
-                  <td>User #{s.TargetUserID}</td>
+                  <td>
+                    {s.TargetUserID === 0 ? (
+                      <span className="badge bg-warning text-dark">Admin Assignment Needed</span>
+                    ) : (
+                      `User #${s.TargetUserID}`
+                    )}
+                  </td>
                   <td>Shift #{s.ShiftID}</td>
                   <td>
-                    <button 
-                      className="btn btn-sm btn-success me-2"
-                      onClick={() => handleApprove(s.ID)}
-                    >
-                      <i className="bi bi-check-circle"></i> Approve
-                    </button>
+                    {s.TargetUserID === 0 ? (
+                      <button 
+                        className="btn btn-sm btn-primary me-2"
+                        onClick={() => setAssignModalData(s.ID)}
+                      >
+                        <i className="bi bi-person-plus"></i> Assign
+                      </button>
+                    ) : (
+                      <button 
+                        className="btn btn-sm btn-success me-2"
+                        onClick={() => handleApprove(s.ID)}
+                      >
+                        <i className="bi bi-check-circle"></i> Approve
+                      </button>
+                    )}
                     <button 
                       className="btn btn-sm btn-danger"
                       onClick={() => handleReject(s.ID)}
@@ -109,6 +158,36 @@ function SwapManagement() {
           </table>
         )}
       </div>
+
+      {assignModalData && (
+        <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Assign Replacement</h5>
+                <button type="button" className="btn-close" onClick={() => setAssignModalData(null)}></button>
+              </div>
+              <div className="modal-body">
+                <p>Select a user to take over Shift #{swaps.find(s => s.ID === assignModalData)?.ShiftID}:</p>
+                <select id="userSelect" className="form-select">
+                  <option value="">-- Choose User --</option>
+                  {users.map(u => (
+                    <option key={u.ID} value={u.ID}>{u.Name} ({u.Role})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setAssignModalData(null)}>Cancel</button>
+                <button type="button" className="btn btn-primary" onClick={() => {
+                  const targetId = document.getElementById('userSelect').value;
+                  if (!targetId) return;
+                  handleAssign(assignModalData, targetId);
+                }}>Confirm Assignment</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
