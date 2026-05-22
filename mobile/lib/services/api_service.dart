@@ -179,9 +179,9 @@ class ApiService {
     }
   }
 
-  static Future<bool> requestTimeOff(DateTime start, DateTime end, double durationHours, String reason) async {
+  static Future<String?> requestTimeOff(DateTime start, DateTime end, double durationHours, String reason) async {
     final token = await getToken();
-    if (token == null) return false;
+    if (token == null) return "User is not logged in";
     
     try {
       final response = await http.post(
@@ -197,10 +197,14 @@ class ApiService {
           'Reason': reason
         }),
       );
-      return response.statusCode == 200 || response.statusCode == 201;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return null; // Success
+      } else {
+        return "Server Error (${response.statusCode}): ${response.body}";
+      }
     } catch (e) {
       print("requestTimeOff error: $e");
-      return false;
+      return "Network error: $e";
     }
   }
 

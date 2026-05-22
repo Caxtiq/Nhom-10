@@ -742,13 +742,14 @@ func (h *Handler) ImportShifts(c *gin.Context) {
 }
 
 func (h *Handler) RequestTimeOff(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userIDFloat, _ := c.Get("userID")
+	userID := uint(userIDFloat.(float64))
 	var req domain.TimeOffRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := h.timeOffService.CreateTimeOffRequest(userID.(uint), &req); err != nil {
+	if err := h.timeOffService.CreateTimeOffRequest(userID, &req); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -756,8 +757,9 @@ func (h *Handler) RequestTimeOff(c *gin.Context) {
 }
 
 func (h *Handler) GetMyTimeOffRequests(c *gin.Context) {
-	userID, _ := c.Get("user_id")
-	reqs, err := h.timeOffService.GetMyTimeOffRequests(userID.(uint))
+	userIDFloat, _ := c.Get("userID")
+	userID := uint(userIDFloat.(float64))
+	reqs, err := h.timeOffService.GetMyTimeOffRequests(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

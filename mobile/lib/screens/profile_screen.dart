@@ -125,21 +125,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
     
-    bool success = await ApiService.requestTimeOff(
+    String? error = await ApiService.requestTimeOff(
       _timeOffStartDate, 
       _timeOffEndDate, 
       _timeOffDurationHours, 
       _timeOffReasonController.text
     );
 
-    if (success) {
+    if (error == null) {
       _showDialog("Success", "Time off request submitted successfully.");
       setState(() {
         _timeOffReasonController.clear();
       });
       _loadProfile(); // reload to get updated list
     } else {
-      _showDialog("Error", "Failed to submit time off request.");
+      _showDialog("Error", "Failed to submit request: $error");
     }
   }
 
