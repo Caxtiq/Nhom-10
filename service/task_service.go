@@ -134,6 +134,8 @@ func (s *taskService) AutoScheduleShifts() (int, error) {
 			continue
 		}
 
+		taskFullyAssigned := true
+
 		if task.WorkModel == "Sequential" && task.Headcount > 1 {
 			// Sequential: each person takes a fraction of the TOTAL task duration.
 			// To keep it simple but respectful of windows, we calculate the total needed man-hours.
@@ -141,6 +143,15 @@ func (s *taskService) AutoScheduleShifts() (int, error) {
 			// and assign 1 person per window until the task is complete.
 			shiftsNeeded := task.Headcount
 			headcountAssigned := 0
+
+			// Count existing sequential shifts
+			for _, shifts := range userShiftsMap {
+				for _, s := range shifts {
+					if s.TaskID != nil && *s.TaskID == task.ID {
+						headcountAssigned++
+					}
+				}
+			}
 
 			for currentStartTime.Before(task.EndTime) && headcountAssigned < shiftsNeeded {
 				shiftStart, windowEnd := getNextShiftWindow(currentStartTime, setting)
@@ -187,6 +198,7 @@ func (s *taskService) AutoScheduleShifts() (int, error) {
 					shift := &domain.Shift{
 						UserID:     item.User.ID,
 						LocationID: task.LocationID,
+						TaskID:     &task.ID,
 						StartTime:  shiftStart,
 						EndTime:    shiftEndTime,
 						Notes:      task.Title,
@@ -201,6 +213,9 @@ func (s *taskService) AutoScheduleShifts() (int, error) {
 				}
 				currentStartTime = shiftEndTime
 			}
+			if headcountAssigned < shiftsNeeded {
+				taskFullyAssigned = false
+			}
 		} else {
 			// Parallel (or Headcount == 1)
 			for currentStartTime.Before(task.EndTime) {
@@ -214,7 +229,17 @@ func (s *taskService) AutoScheduleShifts() (int, error) {
 					shiftEndTime = task.EndTime
 				}
 
-				headcountFulfilled := 0
+				// Count existing parallel shifts for this specific time window
+				existingHeadcount := 0
+				for _, shifts := range userShiftsMap {
+					for _, s := range shifts {
+						if s.TaskID != nil && *s.TaskID == task.ID && s.StartTime.Equal(shiftStart) {
+							existingHeadcount++
+						}
+					}
+				}
+
+				headcountFulfilled := existingHeadcount
 				var eligibleUsers []struct {
 					User  *domain.User
 					Score int
@@ -246,6 +271,7 @@ func (s *taskService) AutoScheduleShifts() (int, error) {
 					shift := &domain.Shift{
 						UserID:     item.User.ID,
 						LocationID: task.LocationID, 
+						TaskID:     &task.ID,
 						StartTime:  shiftStart,
 						EndTime:    shiftEndTime,
 						Notes:      task.Title,
@@ -257,13 +283,17 @@ func (s *taskService) AutoScheduleShifts() (int, error) {
 						userShiftsMap[item.User.ID] = append(userShiftsMap[item.User.ID], *shift)
 					}
 				}
+				if headcountFulfilled < task.Headcount {
+					taskFullyAssigned = false
+				}
 				currentStartTime = shiftEndTime
 			}
 		}
 		
-		// Mark task as assigned (or partially assigned, but for simplicity we mark it assigned)
-		task.IsAssigned = true
-		s.taskRepo.Update(task)
+		if taskFullyAssigned {
+			task.IsAssigned = true
+			s.taskRepo.Update(task)
+		}
 	}
 
 	return shiftsScheduled, nil

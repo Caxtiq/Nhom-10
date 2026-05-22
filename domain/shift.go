@@ -11,6 +11,7 @@ type Shift struct {
 	gorm.Model
 	UserID        uint       `gorm:"not null;index"`
 	LocationID    uint       `gorm:"not null;index"`
+	TaskID        *uint      `gorm:"index"`
 	StartTime     time.Time  `gorm:"not null;index"`
 	EndTime       time.Time  `gorm:"not null"`
 	ClockInTime   *time.Time `gorm:"index"`

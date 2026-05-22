@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 
 function TaskManagement() {
   const [tasks, setTasks] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   
   const [title, setTitle] = useState('');
@@ -21,15 +22,26 @@ function TaskManagement() {
   const [editStartTime, setEditStartTime] = useState('');
   const [editEndTime, setEditEndTime] = useState('');
 
+  // Missing people popup state
+  const [missingPeopleTask, setMissingPeopleTask] = useState(null);
+  const [replacementSearch, setReplacementSearch] = useState('');
+  const [replacementRoleFilter, setReplacementRoleFilter] = useState('');
+
   useEffect(() => {
-    fetchTasks();
+    fetchTasksAndUsers();
   }, []);
 
-  const fetchTasks = async () => {
+  const fetchTasksAndUsers = async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/tasks');
-      const data = await res.json();
-      if (Array.isArray(data)) setTasks(data);
+      const [tasksRes, usersRes] = await Promise.all([
+        fetch('http://localhost:8080/api/tasks'),
+        fetch('http://localhost:8080/api/users')
+      ]);
+      const tasksData = await tasksRes.json();
+      const usersData = await usersRes.json();
+      
+      if (Array.isArray(tasksData)) setTasks(tasksData);
+      if (Array.isArray(usersData)) setUsers(usersData);
     } catch (err) {
       console.error(err);
     } finally {
@@ -40,11 +52,12 @@ function TaskManagement() {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      await fetch('http://localhost:8080/api/tasks', {
+      const res = await fetch('http://localhost:8080/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           Title: title,
+          LocationID: 1,
           RequiredRole: role,
           RequiredSkill: parseInt(requiredSkill),
           Headcount: parseInt(headcount),
@@ -53,8 +66,58 @@ function TaskManagement() {
           EndTime: new Date(endTime).toISOString()
         })
       });
+      const createdTask = await res.json();
+      
       setTitle('');
-      fetchTasks();
+      
+      // Force auto-schedule right away to see if headcount is fulfilled
+      await fetch('http://localhost:8080/api/tasks/auto-schedule', { method: 'POST' });
+      
+      // Fetch fresh tasks
+      const checkRes = await fetch('http://localhost:8080/api/tasks');
+      const allTasks = await checkRes.json();
+      if (Array.isArray(allTasks)) setTasks(allTasks);
+      
+      // Find the newly created task to check its assignment status
+      const updatedTask = allTasks.find(t => t.ID === createdTask.ID);
+      if (updatedTask && !updatedTask.IsAssigned) {
+        // Not enough people! Open the popup
+        setMissingPeopleTask(updatedTask);
+      }
+      
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleReplacementAssign = async (user) => {
+    try {
+      await fetch('http://localhost:8080/api/shifts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          UserID: user.ID,
+          TaskID: missingPeopleTask.ID,
+          LocationID: missingPeopleTask.LocationID || 1,
+          StartTime: missingPeopleTask.StartTime,
+          EndTime: missingPeopleTask.EndTime,
+          Notes: missingPeopleTask.Title,
+          Status: 'scheduled'
+        })
+      });
+      
+      // Re-run auto-schedule
+      await fetch('http://localhost:8080/api/tasks/auto-schedule', { method: 'POST' });
+      
+      // Check if it's finally fully assigned
+      const checkRes = await fetch('http://localhost:8080/api/tasks');
+      const allTasks = await checkRes.json();
+      if (Array.isArray(allTasks)) setTasks(allTasks);
+      
+      const updatedTask = allTasks.find(t => t.ID === missingPeopleTask.ID);
+      if (updatedTask && updatedTask.IsAssigned) {
+        setMissingPeopleTask(null); // Closed because fully assigned
+      }
     } catch (err) {
       console.error(err);
     }
@@ -98,7 +161,7 @@ function TaskManagement() {
         })
       });
       setEditingTask(null);
-      fetchTasks();
+      fetchTasksAndUsers();
     } catch (err) {
       console.error(err);
     }
@@ -108,21 +171,28 @@ function TaskManagement() {
     if (!window.confirm("Are you sure you want to delete this task requirement?")) return;
     try {
       await fetch(`http://localhost:8080/api/tasks/${id}`, { method: 'DELETE' });
-      fetchTasks();
+      fetchTasksAndUsers();
     } catch (err) {
       console.error(err);
     }
   };
 
+  // Filter users for the replacement popup
+  const filteredReplacementUsers = users.filter(u => {
+    if (replacementSearch && !u.Name.toLowerCase().includes(replacementSearch.toLowerCase())) return false;
+    if (replacementRoleFilter && u.Role !== replacementRoleFilter) return false;
+    return true;
+  });
+
   return (
     <div className="row">
       <div className="col-md-4 mb-4">
-        <div className="card h-100">
-          <div className="card-header fw-bold">Create New Task Need</div>
+        <div className="card h-100 shadow-sm border-0">
+          <div className="card-header bg-white border-bottom py-3 fw-bold">Create New Task Need</div>
           <div className="card-body">
             <form onSubmit={handleCreate}>
               <div className="mb-3">
-                <label className="form-label text-muted small">Task Description / Role Need</label>
+                <label className="form-label text-muted small fw-semibold">Task Description / Role Need</label>
                 <input 
                   type="text" 
                   className="form-control"
@@ -132,46 +202,49 @@ function TaskManagement() {
                   required 
                 />
               </div>
-              <div className="mb-3">
-                <label className="form-label text-muted small">Required Role</label>
-                <select className="form-select" value={role} onChange={(e) => setRole(e.target.value)}>
-                  <option value="employee">Employee</option>
-                  <option value="manager">Manager</option>
-                  <option value="admin">Admin</option>
-                </select>
+              <div className="row mb-3">
+                <div className="col-6">
+                  <label className="form-label text-muted small fw-semibold">Required Role</label>
+                  <select className="form-select" value={role} onChange={(e) => setRole(e.target.value)}>
+                    <option value="employee">Employee</option>
+                    <option value="manager">Manager</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <div className="col-6">
+                  <label className="form-label text-muted small fw-semibold">Required Skill Level</label>
+                  <input 
+                    type="number" 
+                    className="form-control"
+                    value={requiredSkill} 
+                    onChange={(e) => setRequiredSkill(e.target.value)} 
+                    min="1" max="5"
+                    required 
+                  />
+                </div>
+              </div>
+              <div className="row mb-3">
+                <div className="col-6">
+                  <label className="form-label text-muted small fw-semibold">Headcount</label>
+                  <input 
+                    type="number" 
+                    className="form-control"
+                    value={headcount} 
+                    onChange={(e) => setHeadcount(e.target.value)} 
+                    min="1"
+                    required 
+                  />
+                </div>
+                <div className="col-6">
+                  <label className="form-label text-muted small fw-semibold">Work Model</label>
+                  <select className="form-select" value={workModel} onChange={(e) => setWorkModel(e.target.value)}>
+                    <option value="Parallel">Parallel</option>
+                    <option value="Sequential">Sequential</option>
+                  </select>
+                </div>
               </div>
               <div className="mb-3">
-                <label className="form-label text-muted small">Required Skill Level</label>
-                <input 
-                  type="number" 
-                  className="form-control"
-                  value={requiredSkill} 
-                  onChange={(e) => setRequiredSkill(e.target.value)} 
-                  min="1" max="5"
-                  required 
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label text-muted small">Headcount (People needed)</label>
-                <input 
-                  type="number" 
-                  className="form-control"
-                  value={headcount} 
-                  onChange={(e) => setHeadcount(e.target.value)} 
-                  min="1"
-                  required 
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label text-muted small">Work Model</label>
-                <select className="form-select" value={workModel} onChange={(e) => setWorkModel(e.target.value)}>
-                  <option value="Parallel">Parallel (Làm song song)</option>
-                  <option value="Sequential">Sequential (Thay phiên)</option>
-                </select>
-                <div className="form-text small">Parallel = everyone at same time. Sequential = divide time.</div>
-              </div>
-              <div className="mb-3">
-                  <label className="form-label text-muted small">Start Time</label>
+                  <label className="form-label text-muted small fw-semibold">Start Time</label>
                 <input 
                   type="datetime-local" 
                   className="form-control"
@@ -190,7 +263,7 @@ function TaskManagement() {
                 />
               </div>
               <div className="mb-4">
-                <label className="form-label text-muted small">End Time</label>
+                <label className="form-label text-muted small fw-semibold">End Time</label>
                 <input 
                   type="datetime-local" 
                   className="form-control"
@@ -199,71 +272,74 @@ function TaskManagement() {
                   required 
                 />
               </div>
-              <button type="submit" className="btn btn-primary w-100">Add Task Need</button>
+              <button type="submit" className="btn btn-primary w-100 fw-medium">Add Task Need</button>
             </form>
           </div>
         </div>
       </div>
 
       <div className="col-md-8">
-        <div className="card h-100">
-          <div className="card-header d-flex justify-content-between align-items-center">
+        <div className="card h-100 shadow-sm border-0">
+          <div className="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
             <span className="fw-bold">Pending Tasks (Unassigned)</span>
             <small className="text-muted">The Auto-Scheduler will assign these automatically.</small>
           </div>
           <div className="card-body p-0 table-responsive">
-            {loading ? <div className="p-4 text-center text-muted">Loading...</div> : (
-              <table className="table table-hover mb-0">
+            {loading ? <div className="p-5 text-center text-muted"><div className="spinner-border text-primary mb-3" role="status"></div><div>Loading tasks...</div></div> : (
+              <table className="table table-hover mb-0 align-middle">
                 <thead className="table-light">
                   <tr>
-                    <th className="px-4">Task</th>
-                    <th>Role & Skill</th>
-                    <th>Headcount</th>
-                    <th>Work Model</th>
-                    <th>Time Needed</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th className="px-4 py-3 fw-semibold text-muted">Task</th>
+                    <th className="py-3 fw-semibold text-muted">Role & Skill</th>
+                    <th className="py-3 fw-semibold text-muted">Headcount</th>
+                    <th className="py-3 fw-semibold text-muted">Model</th>
+                    <th className="py-3 fw-semibold text-muted">Time Needed</th>
+                    <th className="py-3 fw-semibold text-muted">Status</th>
+                    <th className="py-3 text-end px-4 fw-semibold text-muted">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {tasks.map(t => (
                     <tr key={t.ID}>
-                      <td className="px-4 fw-medium">{t.Title}</td>
-                      <td>
+                      <td className="px-4 fw-medium py-3">{t.Title}</td>
+                      <td className="py-3">
                         <span className="badge bg-light text-dark border me-1">{t.RequiredRole}</span>
                         <span className="badge bg-info text-dark border">Lv {t.RequiredSkill || 1}</span>
                       </td>
-                      <td>{t.Headcount || 1} people</td>
-                      <td>
+                      <td className="py-3">{t.Headcount || 1} <i className="bi bi-people ms-1 text-muted"></i></td>
+                      <td className="py-3">
                         <span className={`badge ${t.WorkModel === 'Sequential' ? 'bg-secondary' : 'bg-primary'} bg-opacity-10 text-dark border`}>
                           {t.WorkModel || 'Parallel'}
                         </span>
                       </td>
-                      <td className="text-muted">
-                        {new Date(t.StartTime).toLocaleString()} <br/>
-                        to {new Date(t.EndTime).toLocaleString()}
+                      <td className="text-muted py-3 small">
+                        {new Date(t.StartTime).toLocaleString(undefined, {dateStyle: 'short', timeStyle: 'short'})} <br/>
+                        to {new Date(t.EndTime).toLocaleString(undefined, {dateStyle: 'short', timeStyle: 'short'})}
                       </td>
-                      <td>
+                      <td className="py-3">
                         {t.IsAssigned ? (
                            <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">Assigned (Auto)</span>
                         ) : (
                            <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">Unassigned</span>
                         )}
                       </td>
-                      <td>
-                        <button className="btn btn-sm btn-outline-primary py-0 px-2 me-1" onClick={() => handleEditClick(t)}>
-                          Edit
+                      <td className="py-3 text-end px-4">
+                        <button className="btn btn-sm btn-light border me-1" onClick={() => handleEditClick(t)}>
+                          <i className="bi bi-pencil"></i>
                         </button>
                         {!t.IsAssigned && (
-                          <button className="btn btn-sm btn-outline-danger py-0 px-2" onClick={() => handleDelete(t.ID)}>
-                            Del
+                          <button className="btn btn-sm btn-outline-danger border" onClick={() => handleDelete(t.ID)}>
+                            <i className="bi bi-trash3"></i>
                           </button>
                         )}
                       </td>
                     </tr>
                   ))}
                   {tasks.length === 0 && (
-                    <tr><td colSpan="6" className="text-center py-4 text-muted">No task requirements found.</td></tr>
+                    <tr><td colSpan="7" className="text-center py-5 text-muted">
+                      <i className="bi bi-list-task fs-1 d-block mb-3 text-black-50"></i>
+                      No task requirements found.
+                    </td></tr>
                   )}
                 </tbody>
               </table>
@@ -272,54 +348,145 @@ function TaskManagement() {
         </div>
       </div>
 
+      {missingPeopleTask && (
+        <div className="modal d-block z-3" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1050 }}>
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content border-0 shadow-lg">
+              <div className="modal-header bg-warning bg-opacity-10 border-warning border-opacity-25 pb-3">
+                <h5 className="modal-title fw-bold text-dark">
+                  <i className="bi bi-exclamation-triangle text-warning me-2"></i>
+                  Headcount Unfulfilled
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setMissingPeopleTask(null)}></button>
+              </div>
+              <div className="modal-body p-4">
+                <div className="alert alert-warning border-0 bg-warning bg-opacity-10">
+                  <p className="mb-0">
+                    The Auto-Scheduler could not find enough available employees matching <strong>Level {missingPeopleTask.RequiredSkill} {missingPeopleTask.RequiredRole}</strong> to fulfill the required headcount of <strong>{missingPeopleTask.Headcount}</strong> for <strong>"{missingPeopleTask.Title}"</strong>.
+                  </p>
+                  <p className="mb-0 mt-2">
+                    Please manually select a replacement employee below. You can assign an employee of <strong>any skill level</strong> to fulfill the remaining spots.
+                  </p>
+                </div>
+                
+                <div className="row g-2 mb-3">
+                  <div className="col-md-8">
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      placeholder="Search employee by name..." 
+                      value={replacementSearch}
+                      onChange={(e) => setReplacementSearch(e.target.value)}
+                    />
+                  </div>
+                  <div className="col-md-4">
+                    <select className="form-select" value={replacementRoleFilter} onChange={(e) => setReplacementRoleFilter(e.target.value)}>
+                      <option value="">All Roles</option>
+                      <option value="employee">Employee</option>
+                      <option value="manager">Manager</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="table-responsive border rounded" style={{maxHeight: '300px'}}>
+                  <table className="table table-hover align-middle mb-0">
+                    <thead className="table-light sticky-top">
+                      <tr>
+                        <th className="px-3">Employee Name</th>
+                        <th>Role</th>
+                        <th>Level</th>
+                        <th className="text-end px-3">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredReplacementUsers.map(u => (
+                        <tr key={u.ID}>
+                          <td className="px-3 fw-medium">{u.Name}</td>
+                          <td>{u.Role}</td>
+                          <td>
+                            <span className={`badge ${u.SkillLevel >= missingPeopleTask.RequiredSkill ? 'bg-success' : 'bg-secondary'} bg-opacity-10 text-dark border`}>
+                              Lv {u.SkillLevel}
+                            </span>
+                          </td>
+                          <td className="text-end px-3">
+                            <button className="btn btn-sm btn-primary" onClick={() => handleReplacementAssign(u)}>
+                              Assign
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredReplacementUsers.length === 0 && (
+                        <tr><td colSpan="4" className="text-center py-4 text-muted">No employees match the filter.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+              </div>
+              <div className="modal-footer border-top-0 pt-0 pb-4 px-4">
+                <button type="button" className="btn btn-light w-100" onClick={() => setMissingPeopleTask(null)}>
+                  Keep Unassigned (Retry later)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {editingTask && (
-        <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
+        <div className="modal d-block z-3" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+          <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content border-0 shadow">
-              <div className="modal-header">
-                <h5 className="modal-title">Edit Task Requirement</h5>
+              <div className="modal-header border-bottom-0 pb-0">
+                <h5 className="modal-title fw-bold">Edit Task Requirement</h5>
                 <button type="button" className="btn-close" onClick={() => setEditingTask(null)}></button>
               </div>
               <div className="modal-body">
                 <form onSubmit={handleUpdate}>
                   <div className="mb-3">
-                    <label className="form-label text-muted small">Task Description</label>
+                    <label className="form-label text-muted small fw-semibold">Task Description</label>
                     <input type="text" className="form-control" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required />
                   </div>
-                  <div className="mb-3">
-                    <label className="form-label text-muted small">Required Role</label>
-                    <select className="form-select" value={editRole} onChange={(e) => setEditRole(e.target.value)}>
-                      <option value="employee">Employee</option>
-                      <option value="manager">Manager</option>
-                      <option value="admin">Admin</option>
-                    </select>
+                  <div className="row mb-3">
+                    <div className="col-6">
+                      <label className="form-label text-muted small fw-semibold">Required Role</label>
+                      <select className="form-select" value={editRole} onChange={(e) => setEditRole(e.target.value)}>
+                        <option value="employee">Employee</option>
+                        <option value="manager">Manager</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <div className="col-6">
+                      <label className="form-label text-muted small fw-semibold">Required Skill Level</label>
+                      <input type="number" className="form-control" value={editRequiredSkill} onChange={(e) => setEditRequiredSkill(e.target.value)} min="1" max="5" required />
+                    </div>
                   </div>
-                  <div className="mb-3">
-                    <label className="form-label text-muted small">Required Skill Level</label>
-                    <input type="number" className="form-control" value={editRequiredSkill} onChange={(e) => setEditRequiredSkill(e.target.value)} min="1" max="5" required />
+                  <div className="row mb-3">
+                    <div className="col-6">
+                      <label className="form-label text-muted small fw-semibold">Headcount</label>
+                      <input type="number" className="form-control" value={editHeadcount} onChange={(e) => setEditHeadcount(e.target.value)} min="1" required />
+                    </div>
+                    <div className="col-6">
+                      <label className="form-label text-muted small fw-semibold">Work Model</label>
+                      <select className="form-select" value={editWorkModel} onChange={(e) => setEditWorkModel(e.target.value)}>
+                        <option value="Parallel">Parallel</option>
+                        <option value="Sequential">Sequential</option>
+                      </select>
+                    </div>
                   </div>
-                  <div className="mb-3">
-                    <label className="form-label text-muted small">Headcount</label>
-                    <input type="number" className="form-control" value={editHeadcount} onChange={(e) => setEditHeadcount(e.target.value)} min="1" required />
+                  <div className="row mb-4">
+                    <div className="col-6">
+                      <label className="form-label text-muted small fw-semibold">Start Time</label>
+                      <input type="datetime-local" className="form-control" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} required />
+                    </div>
+                    <div className="col-6">
+                      <label className="form-label text-muted small fw-semibold">End Time</label>
+                      <input type="datetime-local" className="form-control" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} required />
+                    </div>
                   </div>
-                  <div className="mb-3">
-                    <label className="form-label text-muted small">Work Model</label>
-                    <select className="form-select" value={editWorkModel} onChange={(e) => setEditWorkModel(e.target.value)}>
-                      <option value="Parallel">Parallel (Làm song song)</option>
-                      <option value="Sequential">Sequential (Thay phiên)</option>
-                    </select>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label text-muted small">Start Time</label>
-                    <input type="datetime-local" className="form-control" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} required />
-                  </div>
-                  <div className="mb-4">
-                    <label className="form-label text-muted small">End Time</label>
-                    <input type="datetime-local" className="form-control" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} required />
-                  </div>
-                  <div className="d-flex justify-content-end">
+                  <div className="d-flex justify-content-end pt-3 border-top">
                     <button type="button" className="btn btn-light me-2" onClick={() => setEditingTask(null)}>Cancel</button>
-                    <button type="submit" className="btn btn-primary">Save Changes</button>
+                    <button type="submit" className="btn btn-primary px-4">Save</button>
                   </div>
                 </form>
               </div>
