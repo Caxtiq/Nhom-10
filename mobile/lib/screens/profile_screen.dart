@@ -24,7 +24,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // Time off states
   List<dynamic> _myTimeOffRequests = [];
-  bool _isSubmittingTimeOff = false;
   final TextEditingController _timeOffReasonController = TextEditingController();
   DateTime _timeOffStartDate = DateTime.now();
   DateTime _timeOffEndDate = DateTime.now();
@@ -126,14 +125,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
     
-    setState(() => _isSubmittingTimeOff = true);
     bool success = await ApiService.requestTimeOff(
       _timeOffStartDate, 
       _timeOffEndDate, 
       _timeOffDurationHours, 
       _timeOffReasonController.text
     );
-    setState(() => _isSubmittingTimeOff = false);
 
     if (success) {
       _showDialog("Success", "Time off request submitted successfully.");
@@ -238,9 +235,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 8),
                       CupertinoSlidingSegmentedControl<double>(
                         groupValue: _timeOffDurationHours,
-                        children: const <double, Widget>{
-                          4.0: Text("Half Day (4h)"),
-                          8.0: Text("Full Day (8h)"),
+                        children: <double, Widget>{
+                          4.0: const Text("Half Day (4h)"),
+                          8.0: const Text("Full Day (8h)"),
                         },
                         onValueChanged: (val) {
                           if (val != null) {
