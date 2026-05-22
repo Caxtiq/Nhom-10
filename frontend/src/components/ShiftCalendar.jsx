@@ -50,48 +50,17 @@ function ShiftCalendar() {
       if (Array.isArray(usersData)) setUsers(usersData);
       
       if (Array.isArray(shiftsData)) {
-        const groupedShifts = {};
-        shiftsData.forEach(s => {
-          const key = `${s.StartTime}_${s.EndTime}_${s.Notes || 'Shift'}`;
-          if (!groupedShifts[key]) groupedShifts[key] = [];
-          groupedShifts[key].push(s);
+        const events = shiftsData.map(s => {
+          const user = usersData.find(u => u.ID === s.UserID);
+          const userName = user ? user.Name.split(' ')[0] : `User #${s.UserID}`;
+          return {
+            title: `${userName} - ${s.Notes || 'Shift'}`,
+            start: new Date(s.StartTime),
+            end: new Date(s.EndTime),
+            resource: s,
+          };
         });
 
-        let events = [];
-        Object.values(groupedShifts).forEach(group => {
-          const first = group[0];
-          if (group.length === 1) {
-            const user = usersData.find(u => u.ID === first.UserID);
-            const userName = user ? user.Name : `User #${first.UserID}`;
-            events.push({
-              title: `${userName} - ${first.Notes || 'Shift'}`,
-              start: new Date(first.StartTime),
-              end: new Date(first.EndTime),
-              resource: first,
-            });
-          } else {
-            const names = group.map(s => {
-              const u = usersData.find(u => u.ID === s.UserID);
-              return u ? u.Name.split(' ')[0] : `User #${s.UserID}`;
-            }).join(', ');
-            events.push({
-              title: `${group.length} Staff (${names}) - ${first.Notes || 'Shift'}`,
-              start: new Date(first.StartTime),
-              end: new Date(first.EndTime),
-              resource: { ...first, isGroup: true },
-            });
-          }
-        });
-
-        // Group by user to calculate breaks
-        const userShifts = {};
-        shiftsData.forEach(s => {
-          if (!userShifts[s.UserID]) userShifts[s.UserID] = [];
-          userShifts[s.UserID].push(s);
-        });
-
-        // Remove the visual "Rest Period" generation
-        // as it causes visual overlap/conflicts with other shifts.
         setShifts(events);
       }
     } catch (err) {
@@ -246,7 +215,6 @@ function ShiftCalendar() {
             step={30}
             timeslots={2}
             showMultiDayTimes
-            dayLayoutAlgorithm="no-overlap"
             eventPropGetter={eventStyleGetter}
             onSelectEvent={handleSelectEvent}
           />
