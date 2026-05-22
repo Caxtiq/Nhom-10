@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
@@ -237,7 +238,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 8),
                       CupertinoSlidingSegmentedControl<double>(
                         groupValue: _timeOffDurationHours,
-                        children: const {
+                        children: const <double, Widget>{
                           4.0: Text("Half Day (4h)"),
                           8.0: Text("Full Day (8h)"),
                         },
@@ -329,7 +330,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: CupertinoColors.white.withOpacity(0.2),
+                          color: CupertinoColors.white.withAlpha(51),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(CupertinoIcons.person_solid, size: 40, color: CupertinoColors.white),
@@ -342,7 +343,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 4),
                       Text(
                         (_user?['Role'] ?? 'Employee').toString().toUpperCase(),
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: CupertinoColors.white.withOpacity(0.8), letterSpacing: 1.2),
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: CupertinoColors.white.withAlpha(204), letterSpacing: 1.2),
                       ),
                     ],
                   ),
@@ -359,7 +360,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         decoration: BoxDecoration(
                           color: CupertinoColors.white,
                           borderRadius: BorderRadius.circular(20),
-                          boxShadow: [BoxShadow(color: CupertinoColors.systemGrey.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 5))],
+                          boxShadow: [BoxShadow(color: CupertinoColors.systemGrey.withAlpha(25), blurRadius: 15, offset: const Offset(0, 5))],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,7 +404,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               const SizedBox(height: 12),
                               Container(
                                 padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(color: CupertinoColors.destructiveRed.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                                decoration: BoxDecoration(color: CupertinoColors.destructiveRed.withAlpha(25), borderRadius: BorderRadius.circular(8)),
                                 child: const Text("Low Energy Risk. Please take care of your health.", style: TextStyle(color: CupertinoColors.destructiveRed, fontSize: 12, fontWeight: FontWeight.bold)),
                               )
                             ]
@@ -421,7 +422,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         decoration: BoxDecoration(
                           color: CupertinoColors.white,
                           borderRadius: BorderRadius.circular(20),
-                          boxShadow: [BoxShadow(color: CupertinoColors.systemGrey.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 5))],
+                          boxShadow: [BoxShadow(color: CupertinoColors.systemGrey.withAlpha(25), blurRadius: 15, offset: const Offset(0, 5))],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -464,10 +465,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               maxLines: 5,
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF4F7FA),
-                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            ],
                             const SizedBox(height: 16),
                             const Text("Proof / Certificate", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: CupertinoColors.systemGrey)),
                             const SizedBox(height: 8),
@@ -543,7 +542,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           decoration: BoxDecoration(
                             color: CupertinoColors.white,
                             borderRadius: BorderRadius.circular(20),
-                            boxShadow: [BoxShadow(color: CupertinoColors.systemGrey.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 5))],
+                            boxShadow: [BoxShadow(color: CupertinoColors.systemGrey.withAlpha(25), blurRadius: 15, offset: const Offset(0, 5))],
                           ),
                           child: const Center(child: Text("No time off requests.", style: TextStyle(color: CupertinoColors.systemGrey))),
                         )
@@ -561,7 +560,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             decoration: BoxDecoration(
                               color: CupertinoColors.white,
                               borderRadius: BorderRadius.circular(16),
-                              boxShadow: [BoxShadow(color: CupertinoColors.systemGrey.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
+                              boxShadow: [BoxShadow(color: CupertinoColors.systemGrey.withAlpha(13), blurRadius: 10, offset: const Offset(0, 3))],
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -576,7 +575,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: statusColor.withOpacity(0.1),
+                                        color: statusColor.withAlpha(25),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
