@@ -26,6 +26,7 @@ function TaskManagement() {
   const [missingPeopleTask, setMissingPeopleTask] = useState(null);
   const [replacementSearch, setReplacementSearch] = useState('');
   const [replacementRoleFilter, setReplacementRoleFilter] = useState('');
+  const [chosenUsers, setChosenUsers] = useState([]); // Array of user objects
 
   useEffect(() => {
     fetchTasksAndUsers();
@@ -83,6 +84,7 @@ function TaskManagement() {
       if (updatedTask && !updatedTask.IsAssigned) {
         // Not enough people! Open the popup
         setMissingPeopleTask(updatedTask);
+        setChosenUsers([]); // reset
       }
       
     } catch (err) {
@@ -90,34 +92,46 @@ function TaskManagement() {
     }
   };
 
-  const handleReplacementAssign = async (user) => {
+  const toggleUser = (u) => {
+    if (chosenUsers.find(x => x.ID === u.ID)) {
+      setChosenUsers(chosenUsers.filter(x => x.ID !== u.ID));
+    } else {
+      setChosenUsers([...chosenUsers, u]);
+    }
+  };
+
+  const handleConfirmReplacements = async () => {
     try {
-      await fetch('http://localhost:8080/api/shifts', {
-        method: 'POST',
+      // Create shifts for all chosen users
+      for (const u of chosenUsers) {
+        await fetch('http://localhost:8080/api/shifts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            UserID: u.ID,
+            TaskID: missingPeopleTask.ID,
+            LocationID: missingPeopleTask.LocationID || 1,
+            StartTime: missingPeopleTask.StartTime,
+            EndTime: missingPeopleTask.EndTime,
+            Notes: missingPeopleTask.Title,
+            Status: 'scheduled'
+          })
+        });
+      }
+      
+      // Force update task to assigned since admin confirmed the chosen people
+      await fetch(`http://localhost:8080/api/tasks/${missingPeopleTask.ID}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          UserID: user.ID,
-          TaskID: missingPeopleTask.ID,
-          LocationID: missingPeopleTask.LocationID || 1,
-          StartTime: missingPeopleTask.StartTime,
-          EndTime: missingPeopleTask.EndTime,
-          Notes: missingPeopleTask.Title,
-          Status: 'scheduled'
+        body: JSON.stringify({ 
+          ...missingPeopleTask,
+          IsAssigned: true
         })
       });
-      
-      // Re-run auto-schedule
-      await fetch('http://localhost:8080/api/tasks/auto-schedule', { method: 'POST' });
-      
-      // Check if it's finally fully assigned
-      const checkRes = await fetch('http://localhost:8080/api/tasks');
-      const allTasks = await checkRes.json();
-      if (Array.isArray(allTasks)) setTasks(allTasks);
-      
-      const updatedTask = allTasks.find(t => t.ID === missingPeopleTask.ID);
-      if (updatedTask && updatedTask.IsAssigned) {
-        setMissingPeopleTask(null); // Closed because fully assigned
-      }
+
+      setMissingPeopleTask(null);
+      setChosenUsers([]);
+      fetchTasksAndUsers();
     } catch (err) {
       console.error(err);
     }
@@ -357,7 +371,10 @@ function TaskManagement() {
                   <i className="bi bi-exclamation-triangle text-warning me-2"></i>
                   Headcount Unfulfilled
                 </h5>
-                <button type="button" className="btn-close" onClick={() => setMissingPeopleTask(null)}></button>
+                <button type="button" className="btn-close" onClick={() => {
+                  setMissingPeopleTask(null);
+                  setChosenUsers([]);
+                }}></button>
               </div>
               <div className="modal-body p-4">
                 <div className="alert alert-warning border-0 bg-warning bg-opacity-10">
@@ -365,7 +382,7 @@ function TaskManagement() {
                     The Auto-Scheduler could not find enough available employees matching <strong>Level {missingPeopleTask.RequiredSkill} {missingPeopleTask.RequiredRole}</strong> to fulfill the required headcount of <strong>{missingPeopleTask.Headcount}</strong> for <strong>"{missingPeopleTask.Title}"</strong>.
                   </p>
                   <p className="mb-0 mt-2">
-                    Please manually select a replacement employee below. You can assign an employee of <strong>any skill level</strong> to fulfill the remaining spots.
+                    Please manually select replacement employee(s) below. You can assign employees of <strong>any skill level</strong> to fulfill the remaining spots.
                   </p>
                 </div>
                 
@@ -400,7 +417,7 @@ function TaskManagement() {
                     </thead>
                     <tbody>
                       {filteredReplacementUsers.map(u => (
-                        <tr key={u.ID}>
+                        <tr key={u.ID} className={chosenUsers.find(x => x.ID === u.ID) ? "table-success" : ""}>
                           <td className="px-3 fw-medium">{u.Name}</td>
                           <td>{u.Role}</td>
                           <td>
@@ -409,8 +426,11 @@ function TaskManagement() {
                             </span>
                           </td>
                           <td className="text-end px-3">
-                            <button className="btn btn-sm btn-primary" onClick={() => handleReplacementAssign(u)}>
-                              Assign
+                            <button 
+                              className={`btn btn-sm ${chosenUsers.find(x => x.ID === u.ID) ? 'btn-success' : 'btn-outline-primary'}`} 
+                              onClick={() => toggleUser(u)}
+                            >
+                              {chosenUsers.find(x => x.ID === u.ID) ? <><i className="bi bi-check2"></i> Chosen</> : 'Select'}
                             </button>
                           </td>
                         </tr>
@@ -423,10 +443,24 @@ function TaskManagement() {
                 </div>
 
               </div>
-              <div className="modal-footer border-top-0 pt-0 pb-4 px-4">
-                <button type="button" className="btn btn-light w-100" onClick={() => setMissingPeopleTask(null)}>
-                  Keep Unassigned (Retry later)
-                </button>
+              <div className="modal-footer border-top-0 pt-0 pb-4 px-4 d-flex justify-content-between align-items-center">
+                <span className="text-muted">Selected: <strong>{chosenUsers.length}</strong> / {missingPeopleTask.Headcount}</span>
+                <div>
+                  <button type="button" className="btn btn-light me-2" onClick={() => {
+                    setMissingPeopleTask(null);
+                    setChosenUsers([]);
+                  }}>
+                    Keep Unassigned
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-primary" 
+                    disabled={chosenUsers.length === 0}
+                    onClick={handleConfirmReplacements}
+                  >
+                    Confirm {chosenUsers.length} Replacements
+                  </button>
+                </div>
               </div>
             </div>
           </div>
