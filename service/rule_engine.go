@@ -106,11 +106,11 @@ func (e *RuleEngine) IsValid(user *domain.User, userShifts []domain.Shift, requi
 	return true
 }
 
-// CalculateScore calculates a heuristic score to pick the best user
+// CalculateScore calculates a penalty score (lower is better) to pick the best user
 func (e *RuleEngine) CalculateScore(user *domain.User, userShifts []domain.Shift, requiredSkill int) int {
-	score := 100
+	penalty := 0
 	
-	// Penalize users who already have a lot of hours (Balance workload)
+	// Add penalty for users who already have a lot of hours (Balance workload)
 	var weeklyHours float64
 	yTarget, wTarget := time.Now().ISOWeek()
 	for _, s := range userShifts {
@@ -119,11 +119,13 @@ func (e *RuleEngine) CalculateScore(user *domain.User, userShifts []domain.Shift
 			weeklyHours += s.EndTime.Sub(s.StartTime).Hours()
 		}
 	}
-	score -= int(weeklyHours * 2) // deduct 2 points per hour worked
+	penalty += int(weeklyHours * 10) // 10 penalty points per hour worked
 
-	// Penalize over-qualification (Save highly skilled users for harder tasks)
+	// Penalize over-qualification heavily (Save highly skilled users for harder tasks)
 	skillDiff := user.SkillLevel - requiredSkill
-	score -= skillDiff * 10 
+	if skillDiff > 0 {
+		penalty += skillDiff * 1000 
+	}
 
-	return score
+	return penalty
 }
