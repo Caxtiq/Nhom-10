@@ -45,6 +45,7 @@ func SetupRouter(handler *Handler) *gin.Engine {
 			protected.PUT("/settings", handler.UpdateSetting)
 
 			protected.GET("/swaps", handler.GetPendingSwaps)
+			protected.GET("/swaps/me/pending", handler.GetMyPendingSwaps)
 			protected.POST("/swaps", handler.RequestSwap)
 			protected.POST("/swaps/:id/approve", handler.ApproveSwap)
 			protected.POST("/swaps/:id/assign", handler.AssignSwap)
@@ -80,6 +81,9 @@ func SetupRouter(handler *Handler) *gin.Engine {
 			protected.GET("/time-off/pending", handler.GetPendingTimeOffRequests)
 			protected.POST("/time-off/:id/approve", handler.ApproveTimeOffRequest)
 			protected.POST("/time-off/:id/reject", handler.RejectTimeOffRequest)
+
+			protected.GET("/notifications", handler.GetNotifications)
+			protected.PUT("/notifications/:id/read", handler.MarkNotificationRead)
 		}
 	}
 

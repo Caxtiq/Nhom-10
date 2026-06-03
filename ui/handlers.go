@@ -14,12 +14,12 @@ import (
 )
 
 type Handler struct {
-	userService    service.UserService
-	shiftService   service.ShiftService
-	taskService    service.TaskService
-	settingService service.SettingService
-	authService    service.AuthService
-	swapService    service.ShiftSwapService
+	userService      service.UserService
+	shiftService     service.ShiftService
+	taskService      service.TaskService
+	settingService   service.SettingService
+	authService      service.AuthService
+	swapService      service.ShiftSwapService
 	analyticsService service.AnalyticsService
 	healthService    service.HealthService
 	coordService     service.CoordinationService
@@ -27,9 +27,10 @@ type Handler struct {
 	payrollService   *service.PayrollService
 	dataService      *service.DataService
 	timeOffService   service.TimeOffService
+	notificationService service.NotificationService
 }
 
-func NewHandler(us service.UserService, ss service.ShiftService, ts service.TaskService, set service.SettingService, as service.AuthService, swap service.ShiftSwapService, analytics service.AnalyticsService, hs service.HealthService, cs service.CoordinationService, kpi *service.KPIService, pay *service.PayrollService, data *service.DataService, timeOff service.TimeOffService) *Handler {
+func NewHandler(us service.UserService, ss service.ShiftService, ts service.TaskService, set service.SettingService, as service.AuthService, swap service.ShiftSwapService, analytics service.AnalyticsService, hs service.HealthService, cs service.CoordinationService, kpi *service.KPIService, pay *service.PayrollService, data *service.DataService, timeOff service.TimeOffService, notif service.NotificationService) *Handler {
 	return &Handler{
 		userService:      us,
 		shiftService:     ss,
@@ -44,6 +45,7 @@ func NewHandler(us service.UserService, ss service.ShiftService, ts service.Task
 		payrollService:   pay,
 		dataService:      data,
 		timeOffService:   timeOff,
+		notificationService: notif,
 	}
 }
 
@@ -385,6 +387,10 @@ func (h *Handler) ApproveSwap(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	
+	// Automatically reschedule unassigned tasks to fill the requester's newly freed time
+	go h.taskService.ReScheduleShifts()
+	
 	c.JSON(http.StatusOK, gin.H{"message": "Swap approved"})
 }
 
@@ -425,6 +431,30 @@ func (h *Handler) RejectSwap(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Swap rejected"})
 }
 
+func (h *Handler) GetMyPendingSwaps(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	swaps, err := h.swapService.GetPendingSwaps()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Filter swaps targeted at the current user
+	var mySwaps []*domain.ShiftSwap
+	for _, s := range swaps {
+		if s.TargetUserID == userID.(uint) {
+			mySwaps = append(mySwaps, s)
+		}
+	}
+
+	c.JSON(http.StatusOK, mySwaps)
+}
+
 func (h *Handler) AutoSwapRequest(c *gin.Context) {
 	var input struct {
 		RequesterID uint `json:"RequesterID"`
@@ -442,7 +472,7 @@ func (h *Handler) AutoSwapRequest(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Shift successfully auto-swapped", "fallback": false})
+	c.JSON(http.StatusOK, gin.H{"message": "Found an eligible colleague. A swap request has been sent to them for approval.", "fallback": false})
 }
 
 func (h *Handler) GetAttritionRisks(c *gin.Context) {
@@ -796,4 +826,35 @@ func (h *Handler) RejectTimeOffRequest(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Time off rejected"})
 }
 
+func (h *Handler) GetNotifications(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
 
+	notifs, err := h.notificationService.GetNotifications(userID.(uint))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, notifs)
+}
+
+func (h *Handler) MarkNotificationRead(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid notification id"})
+		return
+	}
+
+	err = h.notificationService.MarkAsRead(uint(id))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Notification marked as read"})
+}

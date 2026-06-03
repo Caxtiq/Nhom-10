@@ -8,11 +8,12 @@ import (
 )
 
 type coordinationService struct {
-	taskRepo   repository.TaskRepository
-	shiftRepo  repository.ShiftRepository
-	userRepo   repository.UserRepository
-	settingRepo repository.SettingRepository
-	coordRepo  repository.CoordinationRepository
+	taskRepo            repository.TaskRepository
+	shiftRepo           repository.ShiftRepository
+	userRepo            repository.UserRepository
+	settingRepo         repository.SettingRepository
+	coordRepo           repository.CoordinationRepository
+	notificationService NotificationService
 }
 
 func NewCoordinationService(
@@ -21,13 +22,15 @@ func NewCoordinationService(
 	ur repository.UserRepository,
 	setRepo repository.SettingRepository,
 	cr repository.CoordinationRepository,
+	ns NotificationService,
 ) CoordinationService {
 	return &coordinationService{
-		taskRepo:    tr,
-		shiftRepo:   sr,
-		userRepo:    ur,
-		settingRepo: setRepo,
-		coordRepo:   cr,
+		taskRepo:            tr,
+		shiftRepo:           sr,
+		userRepo:            ur,
+		settingRepo:         setRepo,
+		coordRepo:           cr,
+		notificationService: ns,
 	}
 }
 
@@ -164,6 +167,11 @@ func (s *coordinationService) GenerateSuggestions(taskID uint) ([]*domain.Coordi
 		}
 		s.coordRepo.SaveSuggestion(sugg)
 		generated = append(generated, sugg)
+	}
+
+	if s.notificationService != nil && len(generated) > 0 {
+		msg := fmt.Sprintf("New swap suggestions are available for Task '%s'. View Coordination Dashboard.", task.Title)
+		s.notificationService.CreateNotification(1, msg)
 	}
 
 	return generated, nil

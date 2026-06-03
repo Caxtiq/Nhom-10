@@ -7,18 +7,20 @@ import (
 )
 
 type taskService struct {
-	taskRepo    repository.TaskRepository
-	userRepo    repository.UserRepository
-	shiftRepo   repository.ShiftRepository
-	settingRepo repository.SettingRepository
+	taskRepo          repository.TaskRepository
+	userRepo          repository.UserRepository
+	shiftRepo         repository.ShiftRepository
+	settingRepo       repository.SettingRepository
+	notificationService NotificationService
 }
 
-func NewTaskService(tr repository.TaskRepository, ur repository.UserRepository, sr repository.ShiftRepository, setRepo repository.SettingRepository) TaskService {
+func NewTaskService(tr repository.TaskRepository, ur repository.UserRepository, sr repository.ShiftRepository, setRepo repository.SettingRepository, notifService NotificationService) TaskService {
 	return &taskService{
-		taskRepo:    tr,
-		userRepo:    ur,
-		shiftRepo:   sr,
-		settingRepo: setRepo,
+		taskRepo:          tr,
+		userRepo:          ur,
+		shiftRepo:         sr,
+		settingRepo:       setRepo,
+		notificationService: notifService,
 	}
 }
 
@@ -293,6 +295,21 @@ func (s *taskService) AutoScheduleShifts() (int, error) {
 		if taskFullyAssigned {
 			task.IsAssigned = true
 			s.taskRepo.Update(task)
+		} else {
+			if s.notificationService != nil {
+				msg := "Task '" + task.Title + "' could not be fulfilled. All matching employees are overworked. Suggestion: Consider hiring or reallocating staff."
+				notifs, _ := s.notificationService.GetNotifications(1) // Admin is User 1
+				exists := false
+				for _, n := range notifs {
+					if n.Message == msg && !n.IsRead {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					s.notificationService.CreateNotification(1, msg)
+				}
+			}
 		}
 	}
 

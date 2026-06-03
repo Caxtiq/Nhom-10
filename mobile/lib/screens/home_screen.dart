@@ -47,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isLoading = true);
     String? error = await ApiService.autoSwap(requesterId, shiftId);
     if (error == null) {
-      _showSuccessDialog();
+      _showSuccessDialog("Hệ thống đã gửi yêu cầu đổi ca tới các nhân viên phù hợp. Vui lòng chờ họ xác nhận.");
       _loadShifts(); // Refresh to see shift disappear if it was successfully reassigned
     } else {
       _showErrorDialog(error);
@@ -55,18 +55,95 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isLoading = false);
   }
 
-  void _showSuccessDialog() {
+  void _showSuccessDialog(String message) {
     showCupertinoDialog(
       context: context,
       builder: (context) => CupertinoAlertDialog(
         title: const Text("Success"),
-        content: const Text("Hệ thống đã tự động tìm được người thay thế và chuyển ca thành công!"),
+        content: Text(message),
         actions: [
           CupertinoDialogAction(
             child: const Text("OK"),
             onPressed: () => Navigator.of(context).pop(),
           )
         ],
+      )
+    );
+  }
+  void _showActionSheet(dynamic shift) {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext context) => CupertinoActionSheet(
+        title: const Text('Tùy chọn ca làm việc'),
+        message: const Text('Vui lòng chọn thao tác bạn muốn thực hiện'),
+        actions: <CupertinoActionSheetAction>[
+          CupertinoActionSheetAction(
+            isDefaultAction: true,
+            onPressed: () {
+              Navigator.pop(context);
+              _showSwapDialog(shift.userId, shift.id);
+            },
+            child: const Text('Đổi ca (Swap)'),
+          ),
+          CupertinoActionSheetAction(
+            isDestructiveAction: true,
+            onPressed: () {
+              Navigator.pop(context);
+              _requestTimeOff(shift);
+            },
+            child: const Text('Xin nghỉ (Time Off)'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          child: const Text('Hủy'),
+        ),
+      ),
+    );
+  }
+
+  void _requestTimeOff(dynamic shift) async {
+    TextEditingController reasonController = TextEditingController();
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text("Lý do xin nghỉ"),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: CupertinoTextField(
+            controller: reasonController,
+            placeholder: "Nhập lý do...",
+            style: const TextStyle(color: CupertinoColors.black),
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text("Hủy"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: const Text("Gửi"),
+            onPressed: () async {
+              Navigator.pop(context);
+              setState(() => _isLoading = true);
+              DateTime start = DateTime.parse(shift.startTime).toLocal();
+              DateTime end = DateTime.parse(shift.endTime).toLocal();
+              double duration = end.difference(start).inMinutes / 60.0;
+              
+              String? error = await ApiService.requestTimeOff(start, end, duration, reasonController.text);
+              if (error == null) {
+                _showSuccessDialog("Đã gửi yêu cầu xin nghỉ cho Quản lý phê duyệt.");
+                _loadShifts();
+              } else {
+                _showErrorDialog(error);
+                setState(() => _isLoading = false);
+              }
+            }
+          )
+        ]
       )
     );
   }
@@ -200,7 +277,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     setState(() => _isLoading = true);
                                     bool success = await ApiService.acceptSwap(swap['ID']);
                                     if (success) {
-                                      _showSuccessDialog();
+                                      _showSuccessDialog("Chấp nhận đổi ca thành công!");
                                       _loadShifts();
                                     } else {
                                       _showErrorDialog("Failed to accept swap.");
@@ -364,14 +441,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                         const SizedBox(width: 12),
                                         GestureDetector(
-                                          onTap: () => _showSwapDialog(shift.userId, shift.id),
+                                          onTap: () => _showActionSheet(shift),
                                           child: Container(
                                             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
                                             decoration: BoxDecoration(
                                               color: const Color(0xFFF4F7FA),
                                               borderRadius: BorderRadius.circular(16),
                                             ),
-                                            child: const Icon(CupertinoIcons.arrow_right_arrow_left, color: Color(0xFF1E1E1E), size: 20),
+                                            child: const Icon(CupertinoIcons.ellipsis, color: Color(0xFF1E1E1E), size: 20),
                                           ),
                                         )
                                       ],

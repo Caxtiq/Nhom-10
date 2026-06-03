@@ -74,3 +74,11 @@ type HealthService interface {
 	ApproveDeclaration(id uint, pointsDeducted int, adminNotes string) error
 	RejectDeclaration(id uint, adminNotes string) error
 }
+
+type NotificationService interface {
+	CreateNotification(userID uint, message string) error
+	GetNotifications(userID uint) ([]domain.Notification, error)
+	MarkAsRead(notificationID uint) error
+	MarkAllAsRead(userID uint) error
+	DeleteNotificationByMessage(userID uint, message string) error
+}

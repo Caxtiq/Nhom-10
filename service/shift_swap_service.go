@@ -4,6 +4,7 @@ import (
 	"errors"
 	"shift-management/domain"
 	"shift-management/repository"
+	"time"
 )
 
 type shiftSwapService struct {
@@ -11,14 +12,16 @@ type shiftSwapService struct {
 	shiftRepo   repository.ShiftRepository
 	userRepo    repository.UserRepository
 	settingRepo repository.SettingRepository
+	notifSvc    NotificationService
 }
 
-func NewShiftSwapService(sr repository.ShiftSwapRepository, sh repository.ShiftRepository, ur repository.UserRepository, set repository.SettingRepository) ShiftSwapService {
+func NewShiftSwapService(sr repository.ShiftSwapRepository, sh repository.ShiftRepository, ur repository.UserRepository, set repository.SettingRepository, notifSvc NotificationService) ShiftSwapService {
 	return &shiftSwapService{
 		swapRepo:    sr,
 		shiftRepo:   sh,
 		userRepo:    ur,
 		settingRepo: set,
+		notifSvc:    notifSvc,
 	}
 }
 
@@ -45,6 +48,11 @@ func (s *shiftSwapService) ApproveSwap(swapID uint) error {
 	shift, err := s.shiftRepo.FindByID(swap.ShiftID)
 	if err != nil {
 		return err
+	}
+
+	// Check if shift has already started
+	if time.Now().After(shift.StartTime) {
+		return errors.New("shift has already started, cannot accept swap")
 	}
 
 	targetUser, err := s.userRepo.FindByID(swap.TargetUserID)
@@ -81,8 +89,24 @@ func (s *shiftSwapService) ApproveSwap(swapID uint) error {
 		return err
 	}
 
+	// Approve this swap
 	swap.Status = "approved"
-	return s.swapRepo.Update(swap)
+	if err := s.swapRepo.Update(swap); err != nil {
+		return err
+	}
+
+	// Reject all other pending swaps for this shift
+	otherSwaps, _ := s.swapRepo.FindByShiftID(swap.ShiftID)
+	for _, other := range otherSwaps {
+		if other.ID != swap.ID && other.Status == "pending" {
+			other.Status = "rejected"
+			s.swapRepo.Update(other)
+			// Delete the notification that was sent to them
+			s.notifSvc.DeleteNotificationByMessage(other.TargetUserID, "Có yêu cầu đổi ca làm việc, vui lòng kiểm tra trang chủ để xem chi tiết.")
+		}
+	}
+
+	return nil
 }
 
 func (s *shiftSwapService) RejectSwap(swapID uint) error {
@@ -127,8 +151,7 @@ func (s *shiftSwapService) AutoSwap(requesterID, shiftID uint) error {
 
 	ruleEngine := NewRuleEngine(minRest, setting)
 
-	var bestUser *domain.User
-	var bestScore int = -9999
+	var validUsers []*domain.User
 
 	requester, err := s.userRepo.FindByID(requesterID)
 	if err != nil {
@@ -143,15 +166,11 @@ func (s *shiftSwapService) AutoSwap(requesterID, shiftID uint) error {
 		// Check if valid. We bypass Role and Skill exact matching here (assume any valid substitute works)
 		// by passing the user's own role and skill so it passes the equality check in IsValid.
 		if ruleEngine.IsValid(u, userShiftsMap[u.ID], u.Role, u.SkillLevel, shift.StartTime, shift.EndTime, false) {
-			score := ruleEngine.CalculateScore(u, userShiftsMap[u.ID], u.SkillLevel)
-			if bestUser == nil || score > bestScore {
-				bestUser = u
-				bestScore = score
-			}
+			validUsers = append(validUsers, u)
 		}
 	}
 
-	if bestUser == nil {
+	if len(validUsers) == 0 {
 		// Fallback to manual admin assignment
 		swap := &domain.ShiftSwap{
 			RequesterID:  requesterID,
@@ -165,20 +184,23 @@ func (s *shiftSwapService) AutoSwap(requesterID, shiftID uint) error {
 		return errors.New("fallback_manual")
 	}
 
-	// Transfer shift
-	shift.UserID = bestUser.ID
-	if err := s.shiftRepo.Update(shift); err != nil {
-		return err
+	// Create a pending swap request for each eligible candidate
+	for _, candidate := range validUsers {
+		swap := &domain.ShiftSwap{
+			RequesterID:  requesterID,
+			TargetUserID: candidate.ID,
+			ShiftID:      shiftID,
+			Status:       "pending", // Wait for target user to accept
+		}
+		if err := s.swapRepo.Save(swap); err != nil {
+			// If one fails, continue to others, or return. For now, continue but log (or ignore err if partial success is OK)
+			continue
+		}
+		
+		// Send notification
+		s.notifSvc.CreateNotification(candidate.ID, "Có yêu cầu đổi ca làm việc, vui lòng kiểm tra trang chủ để xem chi tiết.")
 	}
-
-	// Record swap history
-	swap := &domain.ShiftSwap{
-		RequesterID:  requesterID,
-		TargetUserID: bestUser.ID,
-		ShiftID:      shiftID,
-		Status:       "approved", // Auto-approved by AI
-	}
-	return s.swapRepo.Save(swap)
+	return nil
 }
 
 func (s *shiftSwapService) AssignSwap(swapID, targetUserID uint) error {

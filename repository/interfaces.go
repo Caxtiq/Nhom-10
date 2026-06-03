@@ -38,6 +38,7 @@ type ShiftSwapRepository interface {
 	Save(swap *domain.ShiftSwap) error
 	FindByID(id uint) (*domain.ShiftSwap, error)
 	FindByStatus(status string) ([]*domain.ShiftSwap, error)
+	FindByShiftID(shiftID uint) ([]*domain.ShiftSwap, error)
 	Update(swap *domain.ShiftSwap) error
 }
 

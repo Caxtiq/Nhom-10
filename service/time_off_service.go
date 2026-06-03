@@ -55,12 +55,16 @@ func (s *timeOffService) UpdateRequestStatus(requestID uint, status domain.TimeO
 		s.db.Where("user_id = ? AND start_time < ? AND end_time > ?", req.UserID, req.EndDate, req.StartDate).Find(&shifts)
 		
 		for _, shift := range shifts {
-			// Simply remove the user from the shift by clearing UserID and setting status back to pending
-			// In a real app we might want to flag the shift as needing reassignment instead of modifying it directly
-			s.db.Model(&shift).Updates(map[string]interface{}{
-				"user_id": nil,
-				"status": "pending",
-			})
+			// Get task ID before deleting shift
+			taskID := shift.TaskID
+			
+			// Delete the shift
+			s.db.Delete(&shift)
+			
+			// Mark the task as unassigned so auto-scheduler will fill the gap
+			if taskID != nil {
+				s.db.Model(&domain.Task{}).Where("id = ?", *taskID).Update("is_assigned", false)
+			}
 		}
 	}
 

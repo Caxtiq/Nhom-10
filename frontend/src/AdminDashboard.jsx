@@ -13,6 +13,7 @@ import KPIDashboard from './components/KPIDashboard';
 import PayrollDashboard from './components/PayrollDashboard';
 import DataManagement from './components/DataManagement';
 import TimeOffManagement from './components/TimeOffManagement';
+import NotificationBell from './components/NotificationBell';
 
 function AdminDashboard({ onLogout }) {
   const [activeTab, setActiveTab] = useState('shifts');
@@ -159,8 +160,11 @@ function AdminDashboard({ onLogout }) {
         </div>
 
         {/* Main Content */}
-        <div className="col-md-10 bg-white">
-          <div className="p-5">
+        <div className="col-md-10 bg-white d-flex flex-column h-100">
+          <div className="w-100 bg-white border-bottom p-3 d-flex justify-content-end align-items-center shadow-sm z-2">
+            <NotificationBell />
+          </div>
+          <div className="p-5 flex-grow-1 overflow-auto">
             <main>
               {activeTab === 'tasks' && <TaskManagement />}
               {activeTab === 'calendar' && <ShiftCalendar />}

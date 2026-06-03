@@ -25,21 +25,22 @@ func main() {
 	// Setup Services
 	userService := service.NewUserService(userRepo)
 	shiftService := service.NewShiftService(shiftRepo)
-	taskService := service.NewTaskService(taskRepo, userRepo, shiftRepo, settingRepo)
+	notificationService := service.NewNotificationService(config.DB)
+	taskService := service.NewTaskService(taskRepo, userRepo, shiftRepo, settingRepo, notificationService)
 	settingService := service.NewSettingService(settingRepo)
 	authService := service.NewAuthService(userRepo)
-	swapService := service.NewShiftSwapService(swapRepo, shiftRepo, userRepo, settingRepo)
+	swapService := service.NewShiftSwapService(swapRepo, shiftRepo, userRepo, settingRepo, notificationService)
 	analyticsService := service.NewAnalyticsService(userRepo, shiftRepo)
 
 	healthService := service.NewHealthService(config.DB)
-	coordService := service.NewCoordinationService(taskRepo, shiftRepo, userRepo, settingRepo, coordRepo)
+	coordService := service.NewCoordinationService(taskRepo, shiftRepo, userRepo, settingRepo, coordRepo, notificationService)
 	kpiService := service.NewKPIService(config.DB)
 	payrollService := service.NewPayrollService(config.DB)
 	dataService := service.NewDataService(config.DB)
 	timeOffService := service.NewTimeOffService(config.DB)
 
 	// Setup UI / API Handlers
-	handler := ui.NewHandler(userService, shiftService, taskService, settingService, authService, swapService, analyticsService, healthService, coordService, kpiService, payrollService, dataService, timeOffService)
+	handler := ui.NewHandler(userService, shiftService, taskService, settingService, authService, swapService, analyticsService, healthService, coordService, kpiService, payrollService, dataService, timeOffService, notificationService)
 	router := ui.SetupRouter(handler)
 
 	// Background Auto-Scheduling Job

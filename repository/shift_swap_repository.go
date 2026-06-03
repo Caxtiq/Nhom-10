@@ -29,6 +29,12 @@ func (r *shiftSwapRepository) FindByStatus(status string) ([]*domain.ShiftSwap, 
 	return swaps, err
 }
 
+func (r *shiftSwapRepository) FindByShiftID(shiftID uint) ([]*domain.ShiftSwap, error) {
+	var swaps []*domain.ShiftSwap
+	err := r.db.Where("shift_id = ?", shiftID).Find(&swaps).Error
+	return swaps, err
+}
+
 func (r *shiftSwapRepository) Update(swap *domain.ShiftSwap) error {
 	return r.db.Save(swap).Error
 }
