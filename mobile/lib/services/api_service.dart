@@ -93,9 +93,9 @@ class ApiService {
     return response.statusCode == 201;
   }
 
-  static Future<String?> autoSwap(int requesterId, int shiftId) async {
+  static Future<Map<String, dynamic>> autoSwap(int requesterId, int shiftId) async {
     final token = await getToken();
-    if (token == null) return "Lỗi xác thực (Vui lòng đăng nhập lại)";
+    if (token == null) return {'error': "Lỗi xác thực (Vui lòng đăng nhập lại)"};
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/swaps/auto'),
@@ -105,13 +105,13 @@ class ApiService {
         },
         body: jsonEncode({'RequesterID': requesterId, 'ShiftID': shiftId}),
       );
-      if (response.statusCode == 200) {
-        return null; // Success
-      }
       final data = jsonDecode(response.body);
-      return data['error'] ?? "Lỗi không xác định";
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message'] ?? "Thành công"};
+      }
+      return {'error': data['error'] ?? "Lỗi không xác định"};
     } catch (e) {
-      return "Lỗi kết nối máy chủ";
+      return {'error': "Lỗi kết nối máy chủ"};
     }
   }
 

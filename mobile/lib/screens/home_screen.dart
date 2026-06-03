@@ -45,12 +45,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showSwapDialog(int requesterId, int shiftId) async {
     setState(() => _isLoading = true);
-    String? error = await ApiService.autoSwap(requesterId, shiftId);
-    if (error == null) {
-      _showSuccessDialog("Hệ thống đã gửi yêu cầu đổi ca tới các nhân viên phù hợp. Vui lòng chờ họ xác nhận.");
+    final result = await ApiService.autoSwap(requesterId, shiftId);
+    if (result['success'] == true) {
+      _showSuccessDialog(result['message']);
       _loadShifts(); // Refresh to see shift disappear if it was successfully reassigned
     } else {
-      _showErrorDialog(error);
+      _showErrorDialog(result['error']);
     }
     setState(() => _isLoading = false);
   }

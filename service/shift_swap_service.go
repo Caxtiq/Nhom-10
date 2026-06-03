@@ -76,11 +76,15 @@ func (s *shiftSwapService) ApproveSwap(swapID uint) error {
 
 	ruleEngine := NewRuleEngine(minRest, setting)
 
-	// In a real app we'd need RequiredRole and RequiredSkill from the Task,
-	// but here we just check rest and OT hours for the swap.
-	// We pass targetUser.Role and SkillLevel so it always passes the skill check.
-	if !ruleEngine.IsValid(targetUser, targetUserShifts, targetUser.Role, targetUser.SkillLevel, shift.StartTime, shift.EndTime, false) {
-		return errors.New("target user violates scheduling rules (rest/OT limit)")
+	requester, err := s.userRepo.FindByID(swap.RequesterID)
+	if err != nil {
+		return err
+	}
+
+	// We use the requester's Role and SkillLevel as the baseline required skill
+	// This ensures the target user has the same role and a skill level >= the requester's level.
+	if !ruleEngine.IsValid(targetUser, targetUserShifts, requester.Role, requester.SkillLevel, shift.StartTime, shift.EndTime, false) {
+		return errors.New("target user violates scheduling rules (rest/OT limit or skill level)")
 	}
 
 	// Update shift owner
@@ -163,9 +167,9 @@ func (s *shiftSwapService) AutoSwap(requesterID, shiftID uint) error {
 			continue
 		}
 
-		// Check if valid. We bypass Role and Skill exact matching here (assume any valid substitute works)
-		// by passing the user's own role and skill so it passes the equality check in IsValid.
-		if ruleEngine.IsValid(u, userShiftsMap[u.ID], u.Role, u.SkillLevel, shift.StartTime, shift.EndTime, false) {
+		// We use the requester's Role and SkillLevel as the baseline required skill
+		// This ensures the candidate has the same role and a skill level >= the requester's level.
+		if ruleEngine.IsValid(u, userShiftsMap[u.ID], requester.Role, requester.SkillLevel, shift.StartTime, shift.EndTime, false) {
 			validUsers = append(validUsers, u)
 		}
 	}
