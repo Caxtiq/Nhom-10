@@ -115,6 +115,80 @@ class ApiService {
     }
   }
 
+  static Future<List<dynamic>> getMyPendingSwaps() async {
+    final token = await getToken();
+    if (token == null) return [];
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/swaps/me/pending'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      }
+    } catch (e) {
+      print("getMyPendingSwaps error: $e");
+    }
+    return [];
+  }
+
+  static Future<List<dynamic>> getNotifications() async {
+    final token = await getToken();
+    if (token == null) return [];
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/notifications'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      }
+    } catch (e) {
+      print("getNotifications error: $e");
+    }
+    return [];
+  }
+
+  static Future<bool> markNotificationRead(int id) async {
+    final token = await getToken();
+    if (token == null) return false;
+    final response = await http.put(
+      Uri.parse('$baseUrl/notifications/$id/read'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    return response.statusCode == 200;
+  }
+
+  static Future<bool> acceptSwap(int swapId) async {
+    final token = await getToken();
+    if (token == null) return false;
+    final response = await http.post(
+      Uri.parse('$baseUrl/swaps/$swapId/approve'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    return response.statusCode == 200;
+  }
+
+  static Future<bool> rejectSwap(int swapId) async {
+    final token = await getToken();
+    if (token == null) return false;
+    final response = await http.post(
+      Uri.parse('$baseUrl/swaps/$swapId/reject'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    return response.statusCode == 200;
+  }
+
   static Future<Map<String, dynamic>?> getMe() async {
     final token = await getToken();
     if (token == null) return null;

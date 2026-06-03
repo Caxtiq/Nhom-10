@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
+import 'notification_screen.dart';
 
 class MainScreen extends StatelessWidget {
   const MainScreen({super.key});
@@ -18,6 +19,10 @@ class MainScreen extends StatelessWidget {
             label: 'Schedule',
           ),
           BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.bell),
+            label: 'Notifications',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(CupertinoIcons.person),
             label: 'Profile',
           ),
@@ -28,6 +33,8 @@ class MainScreen extends StatelessWidget {
           case 0:
             return CupertinoTabView(builder: (context) => const HomeScreen());
           case 1:
+            return CupertinoTabView(builder: (context) => const NotificationScreen());
+          case 2:
             return CupertinoTabView(builder: (context) => const ProfileScreen());
           default:
             return CupertinoTabView(builder: (context) => const HomeScreen());

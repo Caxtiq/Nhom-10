@@ -13,6 +13,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<Shift> _shifts = [];
+  List<dynamic> _pendingSwaps = [];
   bool _isLoading = true;
 
   @override
@@ -24,8 +25,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadShifts() async {
     setState(() => _isLoading = true);
     final shifts = await ApiService.getMyShifts();
+    final swaps = await ApiService.getMyPendingSwaps();
     setState(() {
       _shifts = shifts;
+      _pendingSwaps = swaps;
       _isLoading = false;
     });
   }
@@ -160,6 +163,80 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           
+          // Pending Swaps (Targeted at me)
+          if (!_isLoading && _pendingSwaps.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Pending Swap Requests", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 10),
+                  ..._pendingSwaps.map((swap) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.systemYellow.withAlpha(40),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: CupertinoColors.systemYellow),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Colleague (ID: ${swap['RequesterID']}) requested you to cover Shift #${swap['ShiftID']}",
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: CupertinoButton(
+                                  padding: EdgeInsets.zero,
+                                  color: CupertinoColors.activeGreen,
+                                  child: const Text("Accept", style: TextStyle(fontWeight: FontWeight.bold)),
+                                  onPressed: () async {
+                                    setState(() => _isLoading = true);
+                                    bool success = await ApiService.acceptSwap(swap['ID']);
+                                    if (success) {
+                                      _showSuccessDialog();
+                                      _loadShifts();
+                                    } else {
+                                      _showErrorDialog("Failed to accept swap.");
+                                      setState(() => _isLoading = false);
+                                    }
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: CupertinoButton(
+                                  padding: EdgeInsets.zero,
+                                  color: CupertinoColors.destructiveRed,
+                                  child: const Text("Decline", style: TextStyle(fontWeight: FontWeight.bold)),
+                                  onPressed: () async {
+                                    setState(() => _isLoading = true);
+                                    bool success = await ApiService.rejectSwap(swap['ID']);
+                                    if (success) {
+                                      _loadShifts();
+                                    } else {
+                                      _showErrorDialog("Failed to decline swap.");
+                                      setState(() => _isLoading = false);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          )
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+            
           // Shifts List
           Expanded(
             child: _isLoading
