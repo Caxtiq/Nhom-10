@@ -83,12 +83,17 @@ func (s *shiftSwapService) ApproveSwap(swapID uint) error {
 
 	// We use the requester's Role and SkillLevel as the baseline required skill
 	// This ensures the target user has the same role and a skill level >= the requester's level.
-	if !ruleEngine.IsValid(targetUser, targetUserShifts, requester.Role, requester.SkillLevel, shift.StartTime, shift.EndTime, false) {
-		return errors.New("target user violates scheduling rules (rest/OT limit or skill level)")
+	// We allow overtime (true) for swaps to increase candidate pool.
+	if !ruleEngine.IsValid(targetUser, targetUserShifts, requester.Role, requester.SkillLevel, shift.StartTime, shift.EndTime, true) {
+		return errors.New("target user violates scheduling rules (rest limit or skill level)")
 	}
 
-	// Update shift owner
+	// Update shift owner and mark as overtime
 	shift.UserID = targetUser.ID
+	if shift.Notes != "" {
+		shift.Notes += " | "
+	}
+	shift.Notes += "[OVERTIME - Nhận từ Đổi ca]"
 	if err := s.shiftRepo.Update(shift); err != nil {
 		return err
 	}
@@ -169,7 +174,8 @@ func (s *shiftSwapService) AutoSwap(requesterID, shiftID uint) error {
 
 		// We use the requester's Role and SkillLevel as the baseline required skill
 		// This ensures the candidate has the same role and a skill level >= the requester's level.
-		if ruleEngine.IsValid(u, userShiftsMap[u.ID], requester.Role, requester.SkillLevel, shift.StartTime, shift.EndTime, false) {
+		// We allow overtime (true) to prevent blocking notifications.
+		if ruleEngine.IsValid(u, userShiftsMap[u.ID], requester.Role, requester.SkillLevel, shift.StartTime, shift.EndTime, true) {
 			validUsers = append(validUsers, u)
 		}
 	}

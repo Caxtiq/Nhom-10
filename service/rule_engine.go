@@ -57,6 +57,10 @@ func (e *RuleEngine) IsValid(user *domain.User, userShifts []domain.Shift, requi
 
 	// 3. Overlap and Rest Hours Check (11-hour rule)
 	for _, s := range userShifts {
+		if s.Status == "cancelled" {
+			continue
+		}
+		
 		// Overlap check
 		if s.StartTime.Before(endTime) && s.EndTime.After(startTime) {
 			return false // Cannot work two shifts at the same time
@@ -73,7 +77,7 @@ func (e *RuleEngine) IsValid(user *domain.User, userShifts []domain.Shift, requi
 		// Rest hours check (After)
 		if s.StartTime.After(endTime) || s.StartTime.Equal(endTime) {
 			restTime := s.StartTime.Sub(endTime).Hours()
-			if !allowOvertime && restTime < e.MinRestHours {
+			if restTime < e.MinRestHours {
 				return false
 			}
 		}
