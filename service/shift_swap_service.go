@@ -97,6 +97,7 @@ func (s *shiftSwapService) ApproveSwap(swapID uint) error {
 		shift.Notes += " | "
 	}
 	shift.Notes += "[OVERTIME - Nhận từ Đổi ca]"
+	shift.Status = "assigned"
 	if err := s.shiftRepo.Update(shift); err != nil {
 		return err
 	}
@@ -231,6 +232,11 @@ func (s *shiftSwapService) AssignSwap(swapID, targetUserID uint) error {
 	}
 
 	shift.UserID = targetUserID
+	if shift.Notes != "" {
+		shift.Notes += " | "
+	}
+	shift.Notes += "[OVERTIME - Nhận từ Đổi ca]"
+	shift.Status = "assigned"
 	if err := s.shiftRepo.Update(shift); err != nil {
 		return err
 	}
