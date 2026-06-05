@@ -833,7 +833,7 @@ func (h *Handler) GetNotifications(c *gin.Context) {
 		return
 	}
 
-	notifs, err := h.notificationService.GetNotifications(userID.(uint))
+	notifs, err := h.notificationService.GetNotifications(uint(userID.(float64)))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
