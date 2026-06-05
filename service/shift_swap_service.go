@@ -4,6 +4,7 @@ import (
 	"errors"
 	"shift-management/domain"
 	"shift-management/repository"
+	"time"
 )
 
 type shiftSwapService struct {
@@ -53,9 +54,9 @@ func (s *shiftSwapService) ApproveSwap(swapID uint) error {
 	}
 
 	// Check if shift has already started
-	// if time.Now().After(shift.StartTime) {
-	// 	return errors.New("shift has already started, cannot accept swap")
-	// }
+	if time.Now().After(shift.StartTime) {
+		return errors.New("shift has already started, cannot accept swap")
+	}
 
 	targetUser, err := s.userRepo.FindByID(swap.TargetUserID)
 	if err != nil {
