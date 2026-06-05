@@ -444,10 +444,9 @@ func (h *Handler) GetMyPendingSwaps(c *gin.Context) {
 		return
 	}
 
-	// Filter swaps targeted at the current user
 	var mySwaps []*domain.ShiftSwap
 	for _, s := range swaps {
-		if s.TargetUserID == userID.(uint) {
+		if s.TargetUserID == uint(userID.(float64)) {
 			mySwaps = append(mySwaps, s)
 		}
 	}
