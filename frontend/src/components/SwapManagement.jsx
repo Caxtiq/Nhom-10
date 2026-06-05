@@ -11,9 +11,16 @@ function SwapManagement() {
     fetchUsers();
   }, []);
 
+  const getHeaders = () => {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    };
+  };
+
   const fetchUsers = async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/users');
+      const res = await fetch('http://localhost:8080/api/users', { headers: getHeaders() });
       const data = await res.json();
       if (Array.isArray(data)) setUsers(data);
     } catch (err) {
@@ -23,7 +30,7 @@ function SwapManagement() {
 
   const fetchSwaps = async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/swaps');
+      const res = await fetch('http://localhost:8080/api/swaps', { headers: getHeaders() });
       const data = await res.json();
       if (Array.isArray(data)) setSwaps(data);
     } catch (err) {
@@ -36,7 +43,8 @@ function SwapManagement() {
   const handleApprove = async (id) => {
     try {
       const res = await fetch(`http://localhost:8080/api/swaps/${id}/approve`, {
-        method: 'POST'
+        method: 'POST',
+        headers: getHeaders()
       });
       if (!res.ok) {
         const errData = await res.json();
@@ -54,7 +62,8 @@ function SwapManagement() {
   const handleReject = async (id) => {
     try {
       const res = await fetch(`http://localhost:8080/api/swaps/${id}/reject`, {
-        method: 'POST'
+        method: 'POST',
+        headers: getHeaders()
       });
       if (!res.ok) {
         const errData = await res.json();
@@ -73,7 +82,7 @@ function SwapManagement() {
     try {
       const res = await fetch(`http://localhost:8080/api/swaps/${id}/assign`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ TargetUserID: parseInt(targetUserId) })
       });
       if (!res.ok) {
