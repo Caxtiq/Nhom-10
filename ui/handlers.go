@@ -858,3 +858,12 @@ func (h *Handler) MarkNotificationRead(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Notification marked as read"})
 }
+
+func (h *Handler) GetSampleUserCSV(c *gin.Context) {
+	c.Header("Content-Disposition", "attachment; filename=sample_users.csv")
+	c.Header("Content-Type", "text/csv")
+	csvContent := "Name,Email,Username,Password,Phone,Role,SkillLevel,MaxWeeklyHours,EnergyScore\n" +
+		"John Doe,john@example.com,johndoe,password123,123456789,employee,1,40,100\n" +
+		"Jane Smith,jane@example.com,janesmith,password123,987654321,manager,3,40,100\n"
+	c.String(http.StatusOK, csvContent)
+}

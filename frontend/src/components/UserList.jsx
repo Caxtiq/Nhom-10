@@ -176,7 +176,12 @@ function UserList() {
 
       <div className="col-md-8">
         <div className="card h-100">
-          <div className="card-header">Team Directory</div>
+          <div className="card-header d-flex justify-content-between align-items-center">
+            <span>Team Directory</span>
+            <a href="http://localhost:8080/api/users/sample-csv" className="btn btn-sm btn-outline-secondary">
+              <i className="bi bi-download me-1"></i> Sample CSV
+            </a>
+          </div>
           <div className="card-body p-0 table-responsive">
             {loading ? <div className="p-4 text-center text-muted">Loading...</div> : (
               <table className="table table-hover mb-0">

@@ -17,6 +17,7 @@ func SetupRouter(handler *Handler) *gin.Engine {
 	api := r.Group("/api")
 	{
 		api.POST("/auth/login", handler.Login)
+		api.GET("/users/sample-csv", handler.GetSampleUserCSV)
 
 		protected := api.Group("/")
 		protected.Use(AuthMiddleware())
