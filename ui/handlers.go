@@ -390,8 +390,9 @@ func (h *Handler) ApproveSwap(c *gin.Context) {
 		return
 	}
 
-	// Automatically reschedule unassigned tasks to fill the requester's newly freed time
-	go h.taskService.ReScheduleShifts()
+	// Automatically schedule unassigned tasks to fill the requester's newly freed time
+	// (Without deleting existing shifts)
+	go h.taskService.AutoScheduleShifts()
 
 	c.JSON(http.StatusOK, gin.H{"message": "Swap approved"})
 }
