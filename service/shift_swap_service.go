@@ -33,6 +33,9 @@ func (s *shiftSwapService) RequestSwap(requesterID, targetUserID, shiftID uint) 
 		Status:       "pending",
 	}
 	err := s.swapRepo.Save(swap)
+	if err == nil {
+		s.notifSvc.CreateNotification(targetUserID, "Có yêu cầu đổi ca làm việc, vui lòng kiểm tra trang chủ để xem chi tiết.")
+	}
 	return swap, err
 }
 
@@ -234,5 +237,9 @@ func (s *shiftSwapService) AssignSwap(swapID, targetUserID uint) error {
 
 	swap.TargetUserID = targetUserID
 	swap.Status = "approved"
-	return s.swapRepo.Update(swap)
+	err = s.swapRepo.Update(swap)
+	if err == nil {
+		s.notifSvc.CreateNotification(targetUserID, "Admin đã phân công bạn nhận một ca làm việc từ yêu cầu đổi ca. Vui lòng kiểm tra lịch làm việc.")
+	}
+	return err
 }
