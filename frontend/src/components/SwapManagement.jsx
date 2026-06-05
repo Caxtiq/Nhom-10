@@ -90,6 +90,11 @@ function SwapManagement() {
     }
   };
 
+  const getUserName = (id) => {
+    const user = users.find(u => u.ID === id);
+    return user ? user.Username : `User #${id}`;
+  };
+
   return (
     <div className="card h-100 shadow-sm border-0">
       <div className="card-header bg-white d-flex justify-content-between align-items-center py-3">
@@ -107,8 +112,8 @@ function SwapManagement() {
             <thead className="table-light">
               <tr>
                 <th className="px-4">Swap ID</th>
-                <th>Requester (User ID)</th>
-                <th>Target (User ID)</th>
+                <th>Requester</th>
+                <th>Target</th>
                 <th>Shift ID</th>
                 <th>Actions</th>
               </tr>
@@ -117,12 +122,12 @@ function SwapManagement() {
               {swaps.map(s => (
                 <tr key={s.ID}>
                   <td className="px-4 fw-medium text-muted">#{s.ID}</td>
-                  <td>User #{s.RequesterID}</td>
+                  <td>{getUserName(s.RequesterID)}</td>
                   <td>
                     {s.TargetUserID === 0 ? (
                       <span className="badge bg-warning text-dark">Admin Assignment Needed</span>
                     ) : (
-                      `User #${s.TargetUserID}`
+                      getUserName(s.TargetUserID)
                     )}
                   </td>
                   <td>Shift #{s.ShiftID}</td>
