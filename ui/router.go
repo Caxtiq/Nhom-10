@@ -18,6 +18,7 @@ func SetupRouter(handler *Handler) *gin.Engine {
 	{
 		api.POST("/auth/login", handler.Login)
 		api.GET("/users/sample-csv", handler.GetSampleUserCSV)
+		api.GET("/data/shifts/sample-csv", handler.GetSampleShiftCSV)
 
 		protected := api.Group("/")
 		protected.Use(AuthMiddleware())
@@ -76,6 +77,7 @@ func SetupRouter(handler *Handler) *gin.Engine {
 
 			protected.GET("/data/export/shifts", handler.ExportShifts)
 			protected.POST("/data/import/shifts", handler.ImportShifts)
+			protected.POST("/data/import/users", handler.ImportUsersFromCSV)
 
 			protected.POST("/time-off", handler.RequestTimeOff)
 			protected.GET("/time-off/my", handler.GetMyTimeOffRequests)

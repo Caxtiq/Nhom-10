@@ -120,3 +120,52 @@ func (s *DataService) ImportShiftsFromCSV(reader io.Reader) (int, error) {
 
 	return count, nil
 }
+
+// ImportUsersFromCSV reads users from a CSV reader and creates them
+func (s *DataService) ImportUsersFromCSV(reader io.Reader) (int, error) {
+	csvReader := csv.NewReader(reader)
+	records, err := csvReader.ReadAll()
+	if err != nil {
+		return 0, err
+	}
+
+	if len(records) <= 1 {
+		return 0, nil // No data or only header
+	}
+
+	count := 0
+	// Skip header (i=0)
+	for i := 1; i < len(records); i++ {
+		row := records[i]
+		if len(row) < 8 {
+			continue // skip malformed row
+		}
+
+		skillLevel, _ := strconv.Atoi(row[6])
+		maxWeeklyHours, _ := strconv.Atoi(row[7])
+		energyScore := 100
+		if len(row) > 8 {
+			if es, err := strconv.Atoi(row[8]); err == nil {
+				energyScore = es
+			}
+		}
+
+		user := domain.User{
+			Name:           row[0],
+			Email:          row[1],
+			Username:       row[2],
+			PasswordHash:   row[3],
+			Phone:          row[4],
+			Role:           domain.Role(row[5]),
+			SkillLevel:     skillLevel,
+			MaxWeeklyHours: maxWeeklyHours,
+			EnergyScore:    energyScore,
+		}
+
+		if err := s.db.Create(&user).Error; err == nil {
+			count++
+		}
+	}
+
+	return count, nil
+}

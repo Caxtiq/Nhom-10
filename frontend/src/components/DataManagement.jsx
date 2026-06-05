@@ -80,8 +80,11 @@ function DataManagement() {
       
       <div className="col-md-6 mb-4">
         <div className="card h-100 shadow-sm border-0">
-          <div className="card-header bg-white py-3">
+          <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center">
             <h5 className="mb-0 fw-semibold text-success"><i className="bi bi-cloud-arrow-up me-2"></i>Import Data</h5>
+            <a href="http://localhost:8080/api/data/shifts/sample-csv" className="btn btn-sm btn-outline-secondary">
+              <i className="bi bi-download me-1"></i> Sample CSV
+            </a>
           </div>
           <div className="card-body">
             <p className="text-muted">Upload a CSV file to bulk import shifts into the system. Ensure the file matches the standard export format.</p>

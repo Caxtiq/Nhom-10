@@ -867,3 +867,28 @@ func (h *Handler) GetSampleUserCSV(c *gin.Context) {
 		"Jane Smith,jane@example.com,janesmith,password123,987654321,manager,3,40,100\n"
 	c.String(http.StatusOK, csvContent)
 }
+
+func (h *Handler) ImportUsersFromCSV(c *gin.Context) {
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get file"})
+		return
+	}
+	defer file.Close()
+
+	count, err := h.dataService.ImportUsersFromCSV(file)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Import successful", "count": count})
+}
+
+func (h *Handler) GetSampleShiftCSV(c *gin.Context) {
+	c.Header("Content-Disposition", "attachment; filename=sample_shifts.csv")
+	c.Header("Content-Type", "text/csv")
+	csvContent := "ID,UserID,LocationID,StartTime,EndTime,ClockInTime,ClockOutTime,Notes,Status\n" +
+		",2,1,2026-06-10T08:00:00Z,2026-06-10T16:00:00Z,,,Morning shift,scheduled\n" +
+		",3,1,2026-06-11T16:00:00Z,2026-06-11T23:59:59Z,,,Evening shift,scheduled\n"
+	c.String(http.StatusOK, csvContent)
+}

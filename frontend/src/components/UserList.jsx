@@ -111,6 +111,34 @@ function UserList() {
     }
   };
 
+  const handleImportUsers = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:8080/api/data/import/users', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`Successfully imported ${data.count} users!`);
+        fetchData();
+      } else {
+        alert(data.error || 'Import failed');
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+    // reset input
+    e.target.value = null;
+  };
+
   return (
     <div className="row">
       <div className="col-md-4 mb-4">
@@ -178,9 +206,15 @@ function UserList() {
         <div className="card h-100">
           <div className="card-header d-flex justify-content-between align-items-center">
             <span>Team Directory</span>
-            <a href="http://localhost:8080/api/users/sample-csv" className="btn btn-sm btn-outline-secondary">
-              <i className="bi bi-download me-1"></i> Sample CSV
-            </a>
+            <div>
+              <label className="btn btn-sm btn-outline-primary me-2 mb-0" style={{ cursor: 'pointer' }}>
+                <i className="bi bi-upload me-1"></i> Import CSV
+                <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleImportUsers} />
+              </label>
+              <a href="http://localhost:8080/api/users/sample-csv" className="btn btn-sm btn-outline-secondary">
+                <i className="bi bi-download me-1"></i> Sample CSV
+              </a>
+            </div>
           </div>
           <div className="card-body p-0 table-responsive">
             {loading ? <div className="p-4 text-center text-muted">Loading...</div> : (
