@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -9,42 +10,42 @@ import (
 	"shift-management/service"
 
 	"github.com/gin-gonic/gin"
-	"path/filepath"
 	"os"
+	"path/filepath"
 )
 
 type Handler struct {
-	userService      service.UserService
-	shiftService     service.ShiftService
-	taskService      service.TaskService
-	settingService   service.SettingService
-	authService      service.AuthService
-	swapService      service.ShiftSwapService
-	analyticsService service.AnalyticsService
-	healthService    service.HealthService
-	coordService     service.CoordinationService
-	kpiService       *service.KPIService
-	payrollService   *service.PayrollService
-	dataService      *service.DataService
-	timeOffService   service.TimeOffService
+	userService         service.UserService
+	shiftService        service.ShiftService
+	taskService         service.TaskService
+	settingService      service.SettingService
+	authService         service.AuthService
+	swapService         service.ShiftSwapService
+	analyticsService    service.AnalyticsService
+	healthService       service.HealthService
+	coordService        service.CoordinationService
+	kpiService          *service.KPIService
+	payrollService      *service.PayrollService
+	dataService         *service.DataService
+	timeOffService      service.TimeOffService
 	notificationService service.NotificationService
 }
 
 func NewHandler(us service.UserService, ss service.ShiftService, ts service.TaskService, set service.SettingService, as service.AuthService, swap service.ShiftSwapService, analytics service.AnalyticsService, hs service.HealthService, cs service.CoordinationService, kpi *service.KPIService, pay *service.PayrollService, data *service.DataService, timeOff service.TimeOffService, notif service.NotificationService) *Handler {
 	return &Handler{
-		userService:      us,
-		shiftService:     ss,
-		taskService:      ts,
-		settingService:   set,
-		authService:      as,
-		swapService:      swap,
-		analyticsService: analytics,
-		healthService:    hs,
-		coordService:     cs,
-		kpiService:       kpi,
-		payrollService:   pay,
-		dataService:      data,
-		timeOffService:   timeOff,
+		userService:         us,
+		shiftService:        ss,
+		taskService:         ts,
+		settingService:      set,
+		authService:         as,
+		swapService:         swap,
+		analyticsService:    analytics,
+		healthService:       hs,
+		coordService:        cs,
+		kpiService:          kpi,
+		payrollService:      pay,
+		dataService:         data,
+		timeOffService:      timeOff,
 		notificationService: notif,
 	}
 }
@@ -138,7 +139,7 @@ func (h *Handler) CreateUser(c *gin.Context) {
 
 func (h *Handler) GetShifts(c *gin.Context) {
 	role, _ := c.Get("role")
-	
+
 	if role == "employee" {
 		userIDFloat, ok := c.Get("userID")
 		if !ok {
@@ -384,13 +385,14 @@ func (h *Handler) ApproveSwap(c *gin.Context) {
 		return
 	}
 	if err := h.swapService.ApproveSwap(uint(id)); err != nil {
+		log.Printf("[ApproveSwap Error] %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Automatically reschedule unassigned tasks to fill the requester's newly freed time
 	go h.taskService.ReScheduleShifts()
-	
+
 	c.JSON(http.StatusOK, gin.H{"message": "Swap approved"})
 }
 
@@ -401,7 +403,7 @@ func (h *Handler) AssignSwap(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid swap id"})
 		return
 	}
-	
+
 	var input struct {
 		TargetUserID uint `json:"TargetUserID"`
 	}
@@ -409,7 +411,7 @@ func (h *Handler) AssignSwap(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	if err := h.swapService.AssignSwap(uint(id), input.TargetUserID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -503,9 +505,9 @@ func (h *Handler) SubmitHealthDeclaration(c *gin.Context) {
 	// Parse multipart form
 	userIDStr := c.PostForm("UserID")
 	condition := c.PostForm("Condition")
-	
+
 	userID, _ := strconv.ParseUint(userIDStr, 10, 32)
-	
+
 	file, err := c.FormFile("ProofFile")
 	var proofPath string
 	if err == nil {
@@ -517,18 +519,18 @@ func (h *Handler) SubmitHealthDeclaration(c *gin.Context) {
 			return
 		}
 	}
-	
+
 	decl := &domain.HealthDeclaration{
 		UserID:    uint(userID),
 		Condition: condition,
 		ProofFile: proofPath,
 	}
-	
+
 	if err := h.healthService.SubmitDeclaration(decl); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(http.StatusCreated, decl)
 }
 
@@ -553,29 +555,29 @@ func (h *Handler) GetKnownHealthConditions(c *gin.Context) {
 func (h *Handler) UpdateKnownCondition(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
-	
+
 	var req struct {
 		Condition      string `json:"Condition"`
 		PointsDeducted int    `json:"PointsDeducted"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	if err := h.healthService.UpdateKnownCondition(uint(id), req.Condition, req.PointsDeducted); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{"message": "Condition updated successfully"})
 }
 
 func (h *Handler) ApproveHealthDeclaration(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.ParseUint(idStr, 10, 32)
-	
+
 	var input struct {
 		PointsDeducted int    `json:"PointsDeducted"`
 		AdminNotes     string `json:"AdminNotes"`
@@ -584,7 +586,7 @@ func (h *Handler) ApproveHealthDeclaration(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	if err := h.healthService.ApproveDeclaration(uint(id), input.PointsDeducted, input.AdminNotes); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -595,7 +597,7 @@ func (h *Handler) ApproveHealthDeclaration(c *gin.Context) {
 func (h *Handler) RejectHealthDeclaration(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.ParseUint(idStr, 10, 32)
-	
+
 	var input struct {
 		AdminNotes string `json:"AdminNotes"`
 	}
@@ -603,7 +605,7 @@ func (h *Handler) RejectHealthDeclaration(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	if err := h.healthService.RejectDeclaration(uint(id), input.AdminNotes); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
