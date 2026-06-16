@@ -36,8 +36,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _clockIn(int shiftId) async {
-    bool success = await ApiService.clockIn(shiftId);
-    if (success) _loadShifts();
+    String? error = await ApiService.clockIn(shiftId);
+    if (error == null) {
+      _loadShifts();
+    } else {
+      _showErrorDialog(error);
+    }
   }
 
   void _clockOut(int shiftId) async {

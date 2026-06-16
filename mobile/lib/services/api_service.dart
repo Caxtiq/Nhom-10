@@ -51,14 +51,22 @@ class ApiService {
     return [];
   }
 
-  static Future<bool> clockIn(int shiftId) async {
+  static Future<String?> clockIn(int shiftId) async {
     final token = await getToken();
-    if (token == null) return false;
-    final response = await http.post(
-      Uri.parse('$baseUrl/shifts/$shiftId/clock-in'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    return response.statusCode == 200;
+    if (token == null) return "User not logged in";
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/shifts/$shiftId/clock-in'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        return null; // success
+      }
+      final data = jsonDecode(response.body);
+      return data['error'] ?? "Unknown error";
+    } catch (e) {
+      return "Network error: $e";
+    }
   }
 
   static Future<bool> clockOut(int shiftId, {String? proofImage}) async {
